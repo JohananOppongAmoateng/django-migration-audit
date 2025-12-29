@@ -123,7 +123,10 @@ python_functions = "test_*"
 norecursedirs = "*.egg .eggs dist build docs .tox .git __pycache__"
 addopts = [
     "--strict-markers",
-    "--cov"
+    "--cov",
+]
+markers = [
+    "headed: run tests in headed mode (for browser tests)",
 ]
 
 [tool.coverage.run]
@@ -139,8 +142,15 @@ show_missing = true
 
 [dependency-groups]
 dev = [
-
+    "pytest>=8.0.0",
+    "pytest-django>=4.5.0",
+    "pytest-cov>=4.1.0",
+    "coverage[toml]>=7.0.0",
+    "ipython>=8.0.0",
+    "pre-commit>=3.0.0",
 ]
 docs = [
-
+    "sphinx>=7.0.0",
+    "sphinx-autobuild>=2024.0.0",
+    "doc8>=1.0.0",
 ]
