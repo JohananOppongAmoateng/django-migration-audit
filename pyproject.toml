@@ -1,0 +1,146 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "django-migration-audit"
+version = "0.1.0"
+description = "A forensic Django tool that verifies whether a live database schema is historically consistent with its applied migrations."
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = [ "LICENSE" ]
+requires-python = ">=3.11"
+repository = ""
+homepage = ""
+dependencies = [
+    "Django >= 4.2",
+]
+authors = [
+    { name = "Johanan Oppong Amoateng", email = "johananoppongamoateng2001@gmail.com" },
+]
+
+keywords = [
+    "django", "migrations", "audit", "database", "schema", "consistency", "forensic"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
+    "Framework :: Django :: 6.0",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Site Management",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+
+[project.urls]
+"Download" = ""
+"Documentation" = ""
+"Homepage" = ""
+"Repository" = ""
+"Issues" = ""
+"Changelog" = ""
+"Code_of_Conduct" = ""
+
+[tool.uv]
+package = true
+
+[tool.hatch.version]
+path = "src/django_migration_audit/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/django_migration_audit"]
+exclude = ["src/django_migration_audit/tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/django_migration_audit"]
+artifacts = ["*.mo"]
+
+[tool.doc8]
+max-line-length = 100
+sphinx = true
+
+[tool.ruff]
+line-length = 99
+
+exclude = [
+    "**/migrations/*.py",
+    "**/migrations/**",
+]
+
+[tool.ruff.lint]
+extend-ignore = [
+    "E501",
+]
+select = [
+    "E",
+    "F",
+    "I",
+    "W",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"example/**" = [
+    "F401",
+    "F403",
+    "F405",
+    "F841",
+    "I",
+]
+"src/django_migration_audit/tests/**" = [
+    "F401",
+    "F403",
+    "F405",
+    "F841",
+    "I",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "django_migration_audit.tests.settings"
+pythonpath = ["src"]
+django_find_project = false
+testpaths = ["src/django_migration_audit/tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+norecursedirs = "*.egg .eggs dist build docs .tox .git __pycache__"
+addopts = [
+    "--strict-markers",
+    "--cov"
+]
+
+[tool.coverage.run]
+source = [
+    "src"
+]
+omit = ["*/migrations/*", "*/tests/*", "src/django_migration_audit/tests/*"]
+branch = true
+relative_files = true
+
+[tool.coverage.report]
+show_missing = true
+
+[dependency-groups]
+dev = [
+
+]
+docs = [
+
+]
