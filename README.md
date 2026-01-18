@@ -195,28 +195,6 @@ Database: default
 - Column type mismatches
 
 
-
-## Example Project
-
-See the [`example/`](example/) directory for a complete Django project demonstrating:
-- Clean migration state
-- Schema drift detection
-- Missing migration file detection
-- Various test scenarios
-
-```bash
-cd example
-python manage.py migrate
-python manage.py audit_migrations
-```
-
-See [`example/README.md`](example/README.md) for detailed instructions.
-
-## Documentation
-
-- [Architecture](docs/architecture.md) - Detailed architecture documentation
-- [Example](example/README.md) - Example project and test scenarios
-
 ## Development
 
 ### Setup
