@@ -1,3 +1,19 @@
+"""
+Migration History and Code Loader
+
+This module handles **Inputs 1 & 2** of the django-migration-audit architecture:
+1. Migration history from the `django_migrations` table
+2. Migration code from disk (migrations/*.py files)
+
+It enables **Comparison A: Trust Verification** (history ↔ code) by detecting:
+- Modified migration files
+- Missing migration files
+- Fake-applied migrations
+- Squash mismatches
+
+The core question this module helps answer:
+"Can we trust the migration history at all?"
+"""
 from dataclasses import dataclass
 from typing import Set, List, Tuple
 
