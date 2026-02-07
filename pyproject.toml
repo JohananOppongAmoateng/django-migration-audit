@@ -59,6 +59,16 @@ classifiers = [
 "Changelog" = ""
 "Code_of_Conduct" = ""
 
+[project.optional-dependencies]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-autobuild>=2024.0.0",
+    "doc8>=1.0.0",
+    "myst-parser>=2.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+]
+
+
 [tool.uv]
 package = true
 
@@ -149,11 +159,4 @@ dev = [
     "ipython>=8.0.0",
     "pre-commit>=3.0.0",
     "ruff>=0.1.0",
-]
-docs = [
-    "sphinx>=7.0.0",
-    "sphinx-autobuild>=2024.0.0",
-    "doc8>=1.0.0",
-    "myst-parser>=2.0.0",
-    "sphinx-rtd-theme>=2.0.0",
 ]
