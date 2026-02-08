@@ -1,7 +1,5 @@
-import os
-import sys
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

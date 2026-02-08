@@ -14,12 +14,13 @@ It enables **Comparison A: Trust Verification** (history ↔ code) by detecting:
 The core question this module helps answer:
 "Can we trust the migration history at all?"
 """
+
 from dataclasses import dataclass
-from typing import Set, List, Tuple
+from typing import List, Set, Tuple
 
 from django.db import connections
-from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.executor import MigrationExecutor
+from django.db.migrations.loader import MigrationLoader
 
 
 @dataclass(frozen=True)

@@ -16,19 +16,21 @@ The state classes represent:
 - TableState: A database table with its columns
 - SchemaState: The entire database schema
 """
+
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
-
 
 # ----------------------------
 # Column
 # ----------------------------
+
 
 @dataclass(frozen=True)
 class ColumnState:
     """
     Canonical representation of a database column.
     """
+
     name: str
     db_type: str
     null: bool
@@ -45,11 +47,13 @@ class ColumnState:
 # Table
 # ----------------------------
 
+
 @dataclass(frozen=True)
 class TableState:
     """
     Canonical representation of a database table.
     """
+
     name: str
     columns: Dict[str, ColumnState] = field(default_factory=dict)
 
@@ -60,13 +64,12 @@ class TableState:
         return self.columns[column_name]
 
 
-
-
 @dataclass(frozen=True)
 class SchemaState:
     """
     Canonical representation of an entire database schema.
     """
+
     tables: Dict[str, TableState] = field(default_factory=dict)
 
     def has_table(self, table_name: str) -> bool:
@@ -83,10 +86,11 @@ class SchemaState:
 # ProjectState (mutable builder)
 # ----------------------------
 
+
 class ProjectState:
     """
     Mutable state builder for constructing expected schema from migration operations.
-    
+
     This is used by the extractor to replay migration operations and build
     the expected schema state.
     """
@@ -98,7 +102,7 @@ class ProjectState:
         """Create a new table from a CreateModel operation."""
         table_name = self._get_table_name(app_label, name, options)
         columns = {}
-        
+
         for field_name, field_obj in fields:
             columns[field_name] = ColumnState(
                 name=field_name,
@@ -106,10 +110,10 @@ class ProjectState:
                 null=field_obj.null,
                 default=self._get_default(field_obj),
             )
-        
+
         self._tables[table_name] = {
-            'name': table_name,
-            'columns': columns,
+            "name": table_name,
+            "columns": columns,
         }
 
     def drop_table(self, app_label: str, name: str):
@@ -124,7 +128,7 @@ class ProjectState:
         table_name = self._find_table(app_label, model_name)
         if table_name:
             field_name = field.name
-            self._tables[table_name]['columns'][field_name] = ColumnState(
+            self._tables[table_name]["columns"][field_name] = ColumnState(
                 name=field_name,
                 db_type=self._get_db_type(field),
                 null=field.null,
@@ -134,15 +138,15 @@ class ProjectState:
     def remove_column(self, app_label: str, model_name: str, name: str):
         """Remove a column from a RemoveField operation."""
         table_name = self._find_table(app_label, model_name)
-        if table_name and name in self._tables[table_name]['columns']:
-            del self._tables[table_name]['columns'][name]
+        if table_name and name in self._tables[table_name]["columns"]:
+            del self._tables[table_name]["columns"][name]
 
     def alter_column(self, app_label: str, model_name: str, field: any):
         """Alter a column from an AlterField operation."""
         table_name = self._find_table(app_label, model_name)
         if table_name:
             field_name = field.name
-            self._tables[table_name]['columns'][field_name] = ColumnState(
+            self._tables[table_name]["columns"][field_name] = ColumnState(
                 name=field_name,
                 db_type=self._get_db_type(field),
                 null=field.null,
@@ -170,8 +174,8 @@ class ProjectState:
         tables = {}
         for table_name, table_data in self._tables.items():
             tables[table_name] = TableState(
-                name=table_data['name'],
-                columns=table_data['columns'].copy(),
+                name=table_data["name"],
+                columns=table_data["columns"].copy(),
             )
         return SchemaState(tables=tables)
 
@@ -179,7 +183,7 @@ class ProjectState:
 
     def _get_table_name(self, app_label: str, model_name: str, options: dict) -> str:
         """Get the database table name for a model."""
-        db_table = options.get('db_table')
+        db_table = options.get("db_table")
         if db_table:
             return db_table
         return f"{app_label}_{model_name.lower()}"
@@ -201,27 +205,26 @@ class ProjectState:
         # Simplified type mapping
         field_type = type(field).__name__
         type_map = {
-            'AutoField': 'integer',
-            'BigAutoField': 'bigint',
-            'IntegerField': 'integer',
-            'BigIntegerField': 'bigint',
-            'CharField': 'varchar',
-            'TextField': 'text',
-            'BooleanField': 'boolean',
-            'DateField': 'date',
-            'DateTimeField': 'timestamp',
-            'DecimalField': 'numeric',
-            'FloatField': 'double precision',
-            'EmailField': 'varchar',
-            'URLField': 'varchar',
-            'ForeignKey': 'integer',
-            'OneToOneField': 'integer',
+            "AutoField": "integer",
+            "BigAutoField": "bigint",
+            "IntegerField": "integer",
+            "BigIntegerField": "bigint",
+            "CharField": "varchar",
+            "TextField": "text",
+            "BooleanField": "boolean",
+            "DateField": "date",
+            "DateTimeField": "timestamp",
+            "DecimalField": "numeric",
+            "FloatField": "double precision",
+            "EmailField": "varchar",
+            "URLField": "varchar",
+            "ForeignKey": "integer",
+            "OneToOneField": "integer",
         }
-        return type_map.get(field_type, 'unknown')
+        return type_map.get(field_type, "unknown")
 
     def _get_default(self, field: any) -> Optional[str]:
         """Get the default value for a field."""
-        if hasattr(field, 'default') and field.default is not None:
+        if hasattr(field, "default") and field.default is not None:
             return str(field.default)
         return None
-

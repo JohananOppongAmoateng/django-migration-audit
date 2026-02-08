@@ -15,11 +15,10 @@ The extractor replays migration operations to construct what the database *shoul
 look like based on the recorded migration history.
 """
 
-from django.db.migrations.operations import models, fields
+from django.db.migrations.operations import fields, models
 from django.db.migrations.operations.base import Operation
 
 from .state import ProjectState
-
 
 SCHEMA_OPS = (
     models.CreateModel,
@@ -60,14 +59,14 @@ class MigrationExtractor:
     def _ordered_applied_nodes(self):
         """
         Return applied migrations in topological order.
-        
+
         Uses Django's MigrationGraph iterative_dfs to traverse from leaf nodes,
         which gives us all reachable nodes in reverse topological order.
         We reverse the result to get proper dependency order.
         """
         # Get all leaf nodes (migrations with no dependents)
         leaf_nodes = self.graph.leaf_nodes()
-        
+
         # Use iterative_dfs to traverse from leaves, collecting all nodes
         # The result is in reverse topological order (leaves first)
         all_nodes = []
@@ -75,23 +74,19 @@ class MigrationExtractor:
             for node in self.graph.iterative_dfs(leaf):
                 if node not in all_nodes:
                     all_nodes.append(node)
-        
+
         # Reverse to get proper topological order (dependencies first)
         all_nodes.reverse()
-        
+
         # Filter to only applied nodes
-        return [
-            node
-            for node in all_nodes
-            if node in self.applied_nodes
-        ]
+        return [node for node in all_nodes if node in self.applied_nodes]
 
     def _apply_migration(self, migration, state):
         """Apply a migration's operations to the state."""
         for operation in migration.operations:
             if isinstance(operation, SCHEMA_OPS):
                 # Set app_label on operation if not already set
-                if not hasattr(operation, 'app_label') or operation.app_label is None:
+                if not hasattr(operation, "app_label") or operation.app_label is None:
                     operation.app_label = migration.app_label
                 self._apply_operation(operation, state)
 

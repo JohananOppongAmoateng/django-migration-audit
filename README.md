@@ -241,6 +241,23 @@ uv run ruff check
 uv run ruff check --fix
 ```
 
+### Pre-commit Hooks
+
+This project uses [pre-commit](https://pre-commit.com/) to automatically check code quality before commits.
+
+To set up the hooks:
+
+```bash
+# Install the hooks
+uv run pre-commit install
+```
+
+Now, `pre-commit` will run automatically on `git commit`. You can also run it manually against all files:
+
+```bash
+uv run pre-commit run --all-files
+```
+
 ## Contributing
 
 Contributions are welcome! Please:

@@ -29,31 +29,23 @@ Constraint invariants (in constraints.py):
 
 # Base invariants (core functionality)
 from django_migration_audit.invariants.base import (
-    Invariant,
+    AllExpectedColumnsExist,
+    AllExpectedTablesExist,
     ComparisonAInvariant,
     ComparisonBInvariant,
-    Violation,
-    Severity,
+    Invariant,
     NoMissingMigrationFiles,
-    SquashMigrationsProperlyReplaced,
-    AllExpectedTablesExist,
     NoUnexpectedTables,
-    AllExpectedColumnsExist,
+    Severity,
+    SquashMigrationsProperlyReplaced,
+    Violation,
 )
 
 # Column invariants
 from django_migration_audit.invariants.columns import (
-    NoUnexpectedColumns,
     ColumnNullabilityMatches,
     NoMissingPrimaryKeys,
-)
-
-# Table invariants
-from django_migration_audit.invariants.tables import (
-    NoEmptyTables,
-    TableNamingConvention,
-    NoLegacyTables,
-    TableCountReasonable,
+    NoUnexpectedColumns,
 )
 
 # Constraint invariants
@@ -64,32 +56,40 @@ from django_migration_audit.invariants.constraints import (
     UniqueConstraintHint,
 )
 
+# Table invariants
+from django_migration_audit.invariants.tables import (
+    NoEmptyTables,
+    NoLegacyTables,
+    TableCountReasonable,
+    TableNamingConvention,
+)
+
 __all__ = [
     # Base classes
-    'Invariant',
-    'ComparisonAInvariant',
-    'ComparisonBInvariant',
-    'Violation',
-    'Severity',
+    "Invariant",
+    "ComparisonAInvariant",
+    "ComparisonBInvariant",
+    "Violation",
+    "Severity",
     # Comparison A invariants
-    'NoMissingMigrationFiles',
-    'SquashMigrationsProperlyReplaced',
+    "NoMissingMigrationFiles",
+    "SquashMigrationsProperlyReplaced",
     # Comparison B invariants (base)
-    'AllExpectedTablesExist',
-    'NoUnexpectedTables',
-    'AllExpectedColumnsExist',
+    "AllExpectedTablesExist",
+    "NoUnexpectedTables",
+    "AllExpectedColumnsExist",
     # Column invariants
-    'NoUnexpectedColumns',
-    'ColumnNullabilityMatches',
-    'NoMissingPrimaryKeys',
+    "NoUnexpectedColumns",
+    "ColumnNullabilityMatches",
+    "NoMissingPrimaryKeys",
     # Table invariants
-    'NoEmptyTables',
-    'TableNamingConvention',
-    'NoLegacyTables',
-    'TableCountReasonable',
+    "NoEmptyTables",
+    "TableNamingConvention",
+    "NoLegacyTables",
+    "TableCountReasonable",
     # Constraint invariants
-    'ForeignKeyColumnsExist',
-    'NoOrphanedForeignKeys',
-    'PrimaryKeyExists',
-    'UniqueConstraintHint',
+    "ForeignKeyColumnsExist",
+    "NoOrphanedForeignKeys",
+    "PrimaryKeyExists",
+    "UniqueConstraintHint",
 ]

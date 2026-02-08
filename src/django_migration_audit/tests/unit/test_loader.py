@@ -37,7 +37,7 @@ class TestMigrationNode(unittest.TestCase):
         node1 = MigrationNode(app="myapp", name="0001_initial")
         node2 = MigrationNode(app="myapp", name="0001_initial")
         node3 = MigrationNode(app="myapp", name="0002_auto")
-        
+
         self.assertEqual(node1, node2)
         self.assertNotEqual(node1, node3)
 
@@ -46,7 +46,7 @@ class TestMigrationNode(unittest.TestCase):
         node1 = MigrationNode(app="myapp", name="0001_initial")
         node2 = MigrationNode(app="myapp", name="0001_initial")
         node3 = MigrationNode(app="myapp", name="0002_auto")
-        
+
         node_set = {node1, node2, node3}
         self.assertEqual(len(node_set), 2)  # node1 and node2 are the same
 
@@ -61,7 +61,7 @@ class TestMigrationHistory(unittest.TestCase):
         missing_files = set()
         squashed_replacements = set()
         plan = [MigrationNode(app="app1", name="0001_initial")]
-        
+
         history = MigrationHistory(
             applied=applied,
             graph_nodes=graph_nodes,
@@ -69,7 +69,7 @@ class TestMigrationHistory(unittest.TestCase):
             squashed_replacements=squashed_replacements,
             plan=plan,
         )
-        
+
         self.assertEqual(history.applied, applied)
         self.assertEqual(history.graph_nodes, graph_nodes)
         self.assertEqual(history.missing_files, missing_files)
@@ -84,7 +84,7 @@ class TestNodeHelper(unittest.TestCase):
         """Test converting tuple to MigrationNode."""
         key = ("myapp", "0001_initial")
         node = _node(key)
-        
+
         self.assertIsInstance(node, MigrationNode)
         self.assertEqual(node.app, "myapp")
         self.assertEqual(node.name, "0001_initial")
@@ -101,9 +101,9 @@ class TestLoadLoader(unittest.TestCase):
         mock_connections.__getitem__.return_value = mock_connection
         mock_loader = Mock()
         mock_loader_class.return_value = mock_loader
-        
+
         result = _load_loader("default")
-        
+
         mock_connections.__getitem__.assert_called_once_with("default")
         mock_loader_class.assert_called_once_with(mock_connection, ignore_no_migrations=True)
         self.assertEqual(result, mock_loader)
@@ -116,9 +116,9 @@ class TestLoadLoader(unittest.TestCase):
         mock_connections.__getitem__.return_value = mock_connection
         mock_loader = Mock()
         mock_loader_class.return_value = mock_loader
-        
+
         result = _load_loader("secondary")
-        
+
         mock_connections.__getitem__.assert_called_once_with("secondary")
         mock_loader_class.assert_called_once_with(mock_connection, ignore_no_migrations=True)
         self.assertEqual(result, mock_loader)
@@ -131,9 +131,9 @@ class TestLoadApplied(unittest.TestCase):
         """Test loading applied migrations when none exist."""
         mock_loader = Mock()
         mock_loader.applied_migrations = {}
-        
+
         result = _load_applied(mock_loader)
-        
+
         self.assertEqual(result, set())
 
     def test_load_applied_with_migrations(self):
@@ -144,9 +144,9 @@ class TestLoadApplied(unittest.TestCase):
             ("app1", "0002_auto"): Mock(),
             ("app2", "0001_initial"): Mock(),
         }
-        
+
         result = _load_applied(mock_loader)
-        
+
         expected = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -162,9 +162,9 @@ class TestLoadGraphNodes(unittest.TestCase):
         """Test loading graph nodes when none exist."""
         mock_loader = Mock()
         mock_loader.disk_migrations = {}
-        
+
         result = _load_graph_nodes(mock_loader)
-        
+
         self.assertEqual(result, set())
 
     def test_load_graph_nodes_with_migrations(self):
@@ -175,9 +175,9 @@ class TestLoadGraphNodes(unittest.TestCase):
             ("app1", "0002_auto"): Mock(),
             ("app2", "0001_initial"): Mock(),
         }
-        
+
         result = _load_graph_nodes(mock_loader)
-        
+
         expected = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -197,9 +197,9 @@ class TestLoadSquashedReplacements(unittest.TestCase):
         mock_loader.disk_migrations = {
             ("app1", "0001_initial"): mock_migration,
         }
-        
+
         result = _load_squashed_replacements(mock_loader)
-        
+
         self.assertEqual(result, set())
 
     def test_load_squashed_replacements_empty(self):
@@ -210,9 +210,9 @@ class TestLoadSquashedReplacements(unittest.TestCase):
         mock_loader.disk_migrations = {
             ("app1", "0001_squashed"): mock_migration,
         }
-        
+
         result = _load_squashed_replacements(mock_loader)
-        
+
         self.assertEqual(result, set())
 
     def test_load_squashed_replacements_single(self):
@@ -227,9 +227,9 @@ class TestLoadSquashedReplacements(unittest.TestCase):
         mock_loader.disk_migrations = {
             ("app1", "0001_squashed"): mock_migration,
         }
-        
+
         result = _load_squashed_replacements(mock_loader)
-        
+
         expected = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -240,29 +240,29 @@ class TestLoadSquashedReplacements(unittest.TestCase):
     def test_load_squashed_replacements_multiple(self):
         """Test loading squashed replacements from multiple squashed migrations."""
         mock_loader = Mock()
-        
+
         mock_migration1 = Mock()
         mock_migration1.replaces = [
             ("app1", "0001_initial"),
             ("app1", "0002_auto"),
         ]
-        
+
         mock_migration2 = Mock()
         mock_migration2.replaces = [
             ("app2", "0001_initial"),
         ]
-        
+
         mock_migration3 = Mock()
         mock_migration3.replaces = None
-        
+
         mock_loader.disk_migrations = {
             ("app1", "0001_squashed"): mock_migration1,
             ("app2", "0001_squashed"): mock_migration2,
             ("app3", "0001_initial"): mock_migration3,
         }
-        
+
         result = _load_squashed_replacements(mock_loader)
-        
+
         expected = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -280,14 +280,14 @@ class TestBuildForwardPlan(unittest.TestCase):
         """Test building forward plan when no migrations exist."""
         mock_connection = Mock()
         mock_connections.__getitem__.return_value = mock_connection
-        
+
         mock_executor = Mock()
         mock_executor.loader.graph.leaf_nodes.return_value = []
         mock_executor.migration_plan.return_value = []
         mock_executor_class.return_value = mock_executor
-        
+
         result = _build_forward_plan("default")
-        
+
         self.assertEqual(result, [])
 
     @patch("django_migration_audit.core.loader.connections")
@@ -296,19 +296,19 @@ class TestBuildForwardPlan(unittest.TestCase):
         """Test building forward plan with only forward migrations."""
         mock_connection = Mock()
         mock_connections.__getitem__.return_value = mock_connection
-        
+
         mock_executor = Mock()
         mock_executor.loader.graph.leaf_nodes.return_value = [
             ("app1", "0002_auto"),
         ]
         mock_executor.migration_plan.return_value = [
             (("app1", "0001_initial"), False),  # Forward
-            (("app1", "0002_auto"), False),     # Forward
+            (("app1", "0002_auto"), False),  # Forward
         ]
         mock_executor_class.return_value = mock_executor
-        
+
         result = _build_forward_plan("default")
-        
+
         expected = [
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -321,20 +321,20 @@ class TestBuildForwardPlan(unittest.TestCase):
         """Test building forward plan with mixed forward and backward migrations."""
         mock_connection = Mock()
         mock_connections.__getitem__.return_value = mock_connection
-        
+
         mock_executor = Mock()
         mock_executor.loader.graph.leaf_nodes.return_value = [
             ("app1", "0002_auto"),
         ]
         mock_executor.migration_plan.return_value = [
-            (("app1", "0003_auto"), True),      # Backward (should be excluded)
+            (("app1", "0003_auto"), True),  # Backward (should be excluded)
             (("app1", "0001_initial"), False),  # Forward
-            (("app1", "0002_auto"), False),     # Forward
+            (("app1", "0002_auto"), False),  # Forward
         ]
         mock_executor_class.return_value = mock_executor
-        
+
         result = _build_forward_plan("default")
-        
+
         expected = [
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -365,9 +365,9 @@ class TestLoadMigrationHistory(unittest.TestCase):
         mock_load_graph_nodes.return_value = set()
         mock_load_squashed.return_value = set()
         mock_build_plan.return_value = []
-        
+
         result = load_migration_history("default")
-        
+
         self.assertIsInstance(result, MigrationHistory)
         self.assertEqual(result.applied, set())
         self.assertEqual(result.graph_nodes, set())
@@ -391,7 +391,7 @@ class TestLoadMigrationHistory(unittest.TestCase):
         """Test loading migration history with migrations."""
         mock_loader = Mock()
         mock_load_loader.return_value = mock_loader
-        
+
         applied = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -407,14 +407,14 @@ class TestLoadMigrationHistory(unittest.TestCase):
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
         ]
-        
+
         mock_load_applied.return_value = applied
         mock_load_graph_nodes.return_value = graph_nodes
         mock_load_squashed.return_value = squashed
         mock_build_plan.return_value = plan
-        
+
         result = load_migration_history("default")
-        
+
         self.assertIsInstance(result, MigrationHistory)
         self.assertEqual(result.applied, applied)
         self.assertEqual(result.graph_nodes, graph_nodes)
@@ -438,7 +438,7 @@ class TestLoadMigrationHistory(unittest.TestCase):
         """Test detecting missing migration files."""
         mock_loader = Mock()
         mock_load_loader.return_value = mock_loader
-        
+
         applied = {
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
@@ -448,14 +448,14 @@ class TestLoadMigrationHistory(unittest.TestCase):
             MigrationNode(app="app1", name="0001_initial"),
             MigrationNode(app="app1", name="0002_auto"),
         }
-        
+
         mock_load_applied.return_value = applied
         mock_load_graph_nodes.return_value = graph_nodes
         mock_load_squashed.return_value = set()
         mock_build_plan.return_value = []
-        
+
         result = load_migration_history("default")
-        
+
         expected_missing = {
             MigrationNode(app="app1", name="0003_missing"),
         }
@@ -481,8 +481,8 @@ class TestLoadMigrationHistory(unittest.TestCase):
         mock_load_graph_nodes.return_value = set()
         mock_load_squashed.return_value = set()
         mock_build_plan.return_value = []
-        
+
         load_migration_history("secondary")
-        
+
         mock_load_loader.assert_called_once_with("secondary")
         mock_build_plan.assert_called_once_with("secondary")

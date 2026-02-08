@@ -2,5 +2,5 @@ from django.apps import AppConfig
 
 
 class DjangoMigrationAuditConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'django_migration_audit'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "django_migration_audit"

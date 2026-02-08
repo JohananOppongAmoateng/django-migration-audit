@@ -25,12 +25,13 @@ for your specific use cases.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List
 from enum import Enum
+from typing import List
 
 
 class Severity(Enum):
     """Severity levels for invariant violations."""
+
     ERROR = "error"
     WARNING = "warning"
     INFO = "info"
@@ -39,6 +40,7 @@ class Severity(Enum):
 @dataclass
 class Violation:
     """Represents a single invariant violation."""
+
     invariant_name: str
     severity: Severity
     message: str
@@ -51,7 +53,7 @@ class Violation:
 class Invariant(ABC):
     """
     Base class for all invariants.
-    
+
     Invariants are verification rules that check for consistency
     between different inputs in the django-migration-audit system.
     """
@@ -72,7 +74,7 @@ class Invariant(ABC):
     def check(self, **kwargs) -> List[Violation]:
         """
         Check the invariant and return any violations.
-        
+
         Returns:
             List of Violation objects (empty list if no violations)
         """
@@ -82,24 +84,27 @@ class Invariant(ABC):
 class ComparisonAInvariant(Invariant):
     """
     Base class for Comparison A invariants (Trust Verification).
-    
+
     These invariants verify migration history ↔ migration code consistency.
     """
+
     pass
 
 
 class ComparisonBInvariant(Invariant):
     """
     Base class for Comparison B invariants (Reality Check).
-    
+
     These invariants verify expected schema ↔ actual schema consistency.
     """
+
     pass
 
 
 # ----------------------------
 # Comparison A Invariants
 # ----------------------------
+
 
 class NoMissingMigrationFiles(ComparisonAInvariant):
     """Verify that all applied migrations have corresponding files on disk."""
@@ -114,16 +119,18 @@ class NoMissingMigrationFiles(ComparisonAInvariant):
 
     def check(self, migration_history) -> List[Violation]:
         violations = []
-        
+
         if migration_history.missing_files:
             for missing in migration_history.missing_files:
-                violations.append(Violation(
-                    invariant_name=self.name,
-                    severity=Severity.ERROR,
-                    message=f"Migration {missing.app}.{missing.name} is recorded as applied but file is missing",
-                    details={"app": missing.app, "name": missing.name}
-                ))
-        
+                violations.append(
+                    Violation(
+                        invariant_name=self.name,
+                        severity=Severity.ERROR,
+                        message=f"Migration {missing.app}.{missing.name} is recorded as applied but file is missing",
+                        details={"app": missing.app, "name": missing.name},
+                    )
+                )
+
         return violations
 
 
@@ -140,23 +147,26 @@ class SquashMigrationsProperlyReplaced(ComparisonAInvariant):
 
     def check(self, migration_history) -> List[Violation]:
         violations = []
-        
+
         # Check if any replaced migrations are still applied
         for replaced in migration_history.squashed_replacements:
             if replaced in migration_history.applied:
-                violations.append(Violation(
-                    invariant_name=self.name,
-                    severity=Severity.WARNING,
-                    message=f"Migration {replaced.app}.{replaced.name} is replaced by a squash but still marked as applied",
-                    details={"app": replaced.app, "name": replaced.name}
-                ))
-        
+                violations.append(
+                    Violation(
+                        invariant_name=self.name,
+                        severity=Severity.WARNING,
+                        message=f"Migration {replaced.app}.{replaced.name} is replaced by a squash but still marked as applied",
+                        details={"app": replaced.app, "name": replaced.name},
+                    )
+                )
+
         return violations
 
 
 # ----------------------------
 # Comparison B Invariants
 # ----------------------------
+
 
 class AllExpectedTablesExist(ComparisonBInvariant):
     """Verify that all expected tables exist in the actual database."""
@@ -171,16 +181,18 @@ class AllExpectedTablesExist(ComparisonBInvariant):
 
     def check(self, expected_schema, actual_schema) -> List[Violation]:
         violations = []
-        
+
         for expected_table in expected_schema.all_tables():
             if not actual_schema.has_table(expected_table.name):
-                violations.append(Violation(
-                    invariant_name=self.name,
-                    severity=Severity.ERROR,
-                    message=f"Expected table '{expected_table.name}' does not exist in database",
-                    details={"table_name": expected_table.name}
-                ))
-        
+                violations.append(
+                    Violation(
+                        invariant_name=self.name,
+                        severity=Severity.ERROR,
+                        message=f"Expected table '{expected_table.name}' does not exist in database",
+                        details={"table_name": expected_table.name},
+                    )
+                )
+
         return violations
 
 
@@ -197,16 +209,18 @@ class NoUnexpectedTables(ComparisonBInvariant):
 
     def check(self, expected_schema, actual_schema) -> List[Violation]:
         violations = []
-        
+
         for actual_table in actual_schema.all_tables():
             if not expected_schema.has_table(actual_table.name):
-                violations.append(Violation(
-                    invariant_name=self.name,
-                    severity=Severity.WARNING,
-                    message=f"Unexpected table '{actual_table.name}' exists in database",
-                    details={"table_name": actual_table.name}
-                ))
-        
+                violations.append(
+                    Violation(
+                        invariant_name=self.name,
+                        severity=Severity.WARNING,
+                        message=f"Unexpected table '{actual_table.name}' exists in database",
+                        details={"table_name": actual_table.name},
+                    )
+                )
+
         return violations
 
 
@@ -223,38 +237,42 @@ class AllExpectedColumnsExist(ComparisonBInvariant):
 
     def check(self, expected_schema, actual_schema) -> List[Violation]:
         violations = []
-        
+
         for expected_table in expected_schema.all_tables():
             if not actual_schema.has_table(expected_table.name):
                 continue  # Table-level check handles this
-            
+
             actual_table = actual_schema.table(expected_table.name)
-            
+
             for col_name, expected_col in expected_table.columns.items():
                 if not actual_table.has_column(col_name):
-                    violations.append(Violation(
-                        invariant_name=self.name,
-                        severity=Severity.ERROR,
-                        message=f"Expected column '{expected_table.name}.{col_name}' does not exist",
-                        details={
-                            "table_name": expected_table.name,
-                            "column_name": col_name,
-                            "expected_type": expected_col.db_type
-                        }
-                    ))
-                else:
-                    actual_col = actual_table.column(col_name)
-                    if expected_col.db_type != actual_col.db_type:
-                        violations.append(Violation(
+                    violations.append(
+                        Violation(
                             invariant_name=self.name,
                             severity=Severity.ERROR,
-                            message=f"Column '{expected_table.name}.{col_name}' has wrong type",
+                            message=f"Expected column '{expected_table.name}.{col_name}' does not exist",
                             details={
                                 "table_name": expected_table.name,
                                 "column_name": col_name,
                                 "expected_type": expected_col.db_type,
-                                "actual_type": actual_col.db_type
-                            }
-                        ))
-        
+                            },
+                        )
+                    )
+                else:
+                    actual_col = actual_table.column(col_name)
+                    if expected_col.db_type != actual_col.db_type:
+                        violations.append(
+                            Violation(
+                                invariant_name=self.name,
+                                severity=Severity.ERROR,
+                                message=f"Column '{expected_table.name}.{col_name}' has wrong type",
+                                details={
+                                    "table_name": expected_table.name,
+                                    "column_name": col_name,
+                                    "expected_type": expected_col.db_type,
+                                    "actual_type": actual_col.db_type,
+                                },
+                            )
+                        )
+
         return violations

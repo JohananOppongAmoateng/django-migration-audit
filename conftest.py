@@ -17,7 +17,6 @@ def pytest_configure(config):
     pass
 
 
-
 def first_breakable_line(obj) -> tuple[str, int]:
     """
     Return the absolute line number of the first executable statement
