@@ -47,7 +47,7 @@ install *OPTS:
 
 # install documentation dependencies
 install-docs:
-    uv sync --all-extras
+    uv sync --extra docs
 
 # run static type checking
 check-types:
