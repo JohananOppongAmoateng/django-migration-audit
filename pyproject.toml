@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "django-migration-audit"
-version = "0.1.0"
+version = "0.1.1"
 description = "A forensic Django tool that verifies whether a live database schema is historically consistent with its applied migrations."
 readme = "README.md"
 license = "BSD-3-Clause"
@@ -22,7 +22,7 @@ keywords = [
     "django", "migrations", "audit", "database", "schema", "consistency", "forensic"
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: Experimental",
     "Environment :: Web Environment",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
@@ -35,7 +35,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
