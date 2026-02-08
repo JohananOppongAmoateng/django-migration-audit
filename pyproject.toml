@@ -11,8 +11,6 @@ readme = "README.md"
 license = "BSD-3-Clause"
 license-files = [ "LICENSE" ]
 requires-python = ">=3.11"
-repository = ""
-homepage = ""
 dependencies = [
     "Django >= 4.2",
 ]
@@ -51,13 +49,12 @@ classifiers = [
 
 
 [project.urls]
-"Download" = ""
-"Documentation" = ""
-"Homepage" = ""
-"Repository" = ""
-"Issues" = ""
-"Changelog" = ""
-"Code_of_Conduct" = ""
+"Download" = "https://pypi.org/project/django-migration-audit/"
+"Documentation" = "https://django-migration-audit.readthedocs.io/"
+"Homepage" = "https://github.com/JohananOppongAmoateng/django-migration-audit"
+"Repository" = "https://github.com/JohananOppongAmoateng/django-migration-audit"
+"Issues" = "https://github.com/JohananOppongAmoateng/django-migration-audit/issues"
+"Changelog" = "https://github.com/JohananOppongAmoateng/django-migration-audit/releases"
 
 [project.optional-dependencies]
 docs = [
