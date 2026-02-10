@@ -25,6 +25,14 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        django-version: ['42', '52', '60']
+        exclude:
+          - python-version: '3.11'
+            django-version: '60'
+          - python-version: '3.13'
+            django-version: '42'
+          - python-version: '3.14'
+            django-version: '42'
 
     services:
       mariadb:
@@ -57,7 +65,11 @@ jobs:
           python -m pip install --upgrade tox tox-gh-actions
 
       - name: Test with tox
-        run: tox
+        run: |
+          # Remove dots from python version for tox env (3.11 -> 311)
+          PY_VER=$(echo "${{ matrix.python-version }}" | tr -d '.')
+          TOX_ENVS=py${PY_VER}-django${{ matrix.django-version }}-mysql
+          tox -e "$TOX_ENVS"
         env:
           DB_BACKEND: mysql
           DB_NAME: django_migration_audit
@@ -80,6 +92,14 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        django-version: ['42', '52', '60']
+        exclude:
+          - python-version: '3.11'
+            django-version: '60'
+          - python-version: '3.13'
+            django-version: '42'
+          - python-version: '3.14'
+            django-version: '42'
 
     services:
       postgres:
@@ -113,7 +133,11 @@ jobs:
           python -m pip install --upgrade tox tox-gh-actions
 
       - name: Test with tox
-        run: tox
+        run: |
+          # Remove dots from python version for tox env (3.11 -> 311)
+          PY_VER=$(echo "${{ matrix.python-version }}" | tr -d '.')
+          TOX_ENVS=py${PY_VER}-django${{ matrix.django-version }}-postgres
+          tox -e "$TOX_ENVS"
         env:
           DB_BACKEND: postgresql
           DB_NAME: django_migration_audit
@@ -136,6 +160,14 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14']
+        django-version: ['42', '52', '60']
+        exclude:
+          - python-version: '3.11'
+            django-version: '60'
+          - python-version: '3.13'
+            django-version: '42'
+          - python-version: '3.14'
+            django-version: '42'
 
     steps:
       - uses: actions/checkout@v4
@@ -154,7 +186,11 @@ jobs:
           python -m pip install --upgrade tox tox-gh-actions
 
       - name: Test with tox
-        run: tox
+        run: |
+          # Remove dots from python version for tox env (3.11 -> 311)
+          PY_VER=$(echo "${{ matrix.python-version }}" | tr -d '.')
+          TOX_ENVS=py${PY_VER}-django${{ matrix.django-version }}-sqlite
+          tox -e "$TOX_ENVS"
         env:
           DB_BACKEND: sqlite3
           DB_NAME: ":memory:"
