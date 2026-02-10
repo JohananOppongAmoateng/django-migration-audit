@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-    tags: 
+    tags:
       - "*"
   pull_request:
   schedule:
@@ -82,7 +82,7 @@ jobs:
       - name: Store coverage file
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-mysql-${{ matrix.python-version }}
+          name: coverage-mysql-${{ matrix.python-version }}-django-${{ matrix.django-version }}
           path: .coverage.mysql.${{ matrix.python-version }}*
           include-hidden-files: true
 
@@ -111,7 +111,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd pg_isready -U postgres
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -150,7 +150,7 @@ jobs:
       - name: Store coverage file
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-postgresql-${{ matrix.python-version }}
+          name: coverage-postgresql-${{ matrix.python-version }}-django-${{ matrix.django-version }}
           path: .coverage.postgresql.${{ matrix.python-version }}*
           include-hidden-files: true
 
@@ -199,7 +199,7 @@ jobs:
       - name: Store coverage file
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-sqlite-${{ matrix.python-version }}
+          name: coverage-sqlite-${{ matrix.python-version }}-django-${{ matrix.django-version }}
           path: .coverage.sqlite.${{ matrix.python-version }}*
           include-hidden-files: true
 
