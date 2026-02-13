@@ -5,19 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
+## [0.1.1]
 - Added `CHANGELOG.md` and integrated into documentation.
-
-### Changed
 - Improved CI workflow configuration.
+- Fixed bugs with the schema detection and comparison.
 
 
 
 
 ## [0.1.0]
-### Added
 - Core audit functionality comparing Migration History, Migration Code, and Live Database Schema.
 - "Trust Verification" (Comparison A): Verifies consistency between migration history and migration code.
   - Detects missing migration files.

@@ -7,7 +7,7 @@
 [![Django](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
 
 > **⚠️ Work in Progress**
-> 
+>
 > This project is under active development and not yet ready for production use. The core functionality is being implemented and tested, but the API may change and some features are still being refined. Use at your own risk and expect breaking changes.
 
 
@@ -282,4 +282,3 @@ Created by Johanan Oppong Amoateng
 
 - **Issues**: [GitHub Issues](https://github.com/JohananOppongAmoateng/django-migration-audit/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/JohananOppongAmoateng/django-migration-audit/discussions)
-
