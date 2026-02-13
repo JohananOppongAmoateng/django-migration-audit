@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django_migration_audit",
-    "django_migration_audit.tests",
+    "django_migration_audit.tests.apps.TestsConfig",  # Use AppConfig to get the label
 ]
 
 MIDDLEWARE = []
@@ -31,12 +31,38 @@ TEMPLATES = []
 
 # Database
 # https://docs.djangoproject.com/en/stable/ref/settings/#databases
+
+# Get database configuration from environment variables
+DB_BACKEND = os.environ.get("DB_BACKEND", "sqlite3")
+DB_NAME = os.environ.get("DB_NAME", ":memory:")
+DB_USER = os.environ.get("DB_USER", "")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "")
+DB_HOST = os.environ.get("DB_HOST", "")
+DB_PORT = os.environ.get("DB_PORT", "")
+
+# Map backend names to Django database engines
+BACKEND_MAPPING = {
+    "sqlite3": "django.db.backends.sqlite3",
+    "postgresql": "django.db.backends.postgresql",
+    "mysql": "django.db.backends.mysql",
+}
+
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+        "ENGINE": BACKEND_MAPPING.get(DB_BACKEND, "django.db.backends.sqlite3"),
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
     }
 }
+
+if DB_BACKEND == "mysql":
+    DATABASES["default"]["OPTIONS"] = {
+        "charset": "utf8mb4",
+    }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/

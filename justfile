@@ -208,6 +208,18 @@ coverage:
     @just run coverage report
     @just run coverage xml
 
+# run tox tests for all environments
+test-tox:
+    @just run tox
+
+# run tox tests for a specific environment
+test-tox-env ENV:
+    @just run tox -e {{ ENV }}
+
+# list all tox environments
+list-tox-envs:
+    @just run tox -l
+
 [script]
 fetch-refs LIB: install-docs
     import os

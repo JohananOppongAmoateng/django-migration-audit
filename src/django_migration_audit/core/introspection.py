@@ -18,6 +18,13 @@ from django.db import connections
 
 from .state import ColumnState, SchemaState, TableState
 
+DJANGO_INTERNAL_TABLE_PREFIXES = ("django_", "auth_", "sqlite_")
+
+
+def is_internal_table(table_name: str) -> bool:
+    """Check if a table is a Django internal table."""
+    return table_name.startswith(DJANGO_INTERNAL_TABLE_PREFIXES)
+
 
 def introspect_schema(using: str = "default") -> SchemaState:
     """
@@ -37,17 +44,7 @@ def introspect_schema(using: str = "default") -> SchemaState:
 
         tables = {}
         for table_name in table_names:
-            # Skip Django internal tables
-            if table_name in (
-                "django_migrations",
-                "django_content_type",
-                "django_session",
-                "auth_permission",
-                "auth_group",
-                "auth_group_permissions",
-                "auth_user_groups",
-                "auth_user_user_permissions",
-            ):
+            if is_internal_table(table_name):
                 continue
 
             columns = _introspect_table_columns(cursor, introspection, table_name)
@@ -68,7 +65,7 @@ def _introspect_table_columns(cursor, introspection, table_name: str) -> dict:
     columns = {}
     for row in table_description:
         col_name = row.name
-        col_type = _normalize_db_type(row.type_code, introspection)
+        col_type = _normalize_db_type(row.type_code, introspection, row)
         col_null = row.null_ok
         col_default = row.default
 
@@ -82,7 +79,7 @@ def _introspect_table_columns(cursor, introspection, table_name: str) -> dict:
     return columns
 
 
-def _normalize_db_type(type_code, introspection) -> str:
+def _normalize_db_type(type_code, introspection, description=None) -> str:
     """
     Normalize database type codes to consistent string representations.
 
@@ -90,12 +87,17 @@ def _normalize_db_type(type_code, introspection) -> str:
     to a consistent format for comparison.
     """
     # Get the data type name from the introspection
+    # Pass the full FieldInfo row as description so backends (e.g. SQLite)
+    # can inspect attributes like pk to distinguish AutoField vs IntegerField.
     try:
-        data_type = introspection.get_field_type(type_code, None)
+        data_type = introspection.get_field_type(type_code, description)
     except (KeyError, AttributeError):
         data_type = "unknown"
 
     # Normalize common variations
+    # Note: ForeignKey, OneToOneField, EmailField, URLField are not included
+    # because Django's introspection returns storage-level types (IntegerField,
+    # CharField), not logical types.
     type_map = {
         "AutoField": "integer",
         "BigAutoField": "bigint",
@@ -108,10 +110,6 @@ def _normalize_db_type(type_code, introspection) -> str:
         "DateTimeField": "timestamp",
         "DecimalField": "numeric",
         "FloatField": "double precision",
-        "EmailField": "varchar",
-        "URLField": "varchar",
-        "ForeignKey": "integer",
-        "OneToOneField": "integer",
     }
 
     return type_map.get(data_type, data_type.lower())

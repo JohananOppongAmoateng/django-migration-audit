@@ -297,13 +297,20 @@ class TestBuildForwardPlan(unittest.TestCase):
         mock_connection = Mock()
         mock_connections.__getitem__.return_value = mock_connection
 
+        migration1 = Mock()
+        migration1.app_label = "app1"
+        migration1.name = "0001_initial"
+        migration2 = Mock()
+        migration2.app_label = "app1"
+        migration2.name = "0002_auto"
+
         mock_executor = Mock()
         mock_executor.loader.graph.leaf_nodes.return_value = [
             ("app1", "0002_auto"),
         ]
         mock_executor.migration_plan.return_value = [
-            (("app1", "0001_initial"), False),  # Forward
-            (("app1", "0002_auto"), False),  # Forward
+            (migration1, False),  # Forward
+            (migration2, False),  # Forward
         ]
         mock_executor_class.return_value = mock_executor
 
@@ -322,14 +329,24 @@ class TestBuildForwardPlan(unittest.TestCase):
         mock_connection = Mock()
         mock_connections.__getitem__.return_value = mock_connection
 
+        migration1 = Mock()
+        migration1.app_label = "app1"
+        migration1.name = "0001_initial"
+        migration2 = Mock()
+        migration2.app_label = "app1"
+        migration2.name = "0002_auto"
+        migration3 = Mock()
+        migration3.app_label = "app1"
+        migration3.name = "0003_auto"
+
         mock_executor = Mock()
         mock_executor.loader.graph.leaf_nodes.return_value = [
             ("app1", "0002_auto"),
         ]
         mock_executor.migration_plan.return_value = [
-            (("app1", "0003_auto"), True),  # Backward (should be excluded)
-            (("app1", "0001_initial"), False),  # Forward
-            (("app1", "0002_auto"), False),  # Forward
+            (migration3, True),  # Backward (should be excluded)
+            (migration1, False),  # Forward
+            (migration2, False),  # Forward
         ]
         mock_executor_class.return_value = mock_executor
 
