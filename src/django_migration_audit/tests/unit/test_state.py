@@ -281,6 +281,102 @@ def test_project_state_alter_column():
     assert table.column("age").db_type == "bigint"
 
 
+def test_project_state_fk_column_naming():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+
+    fields = [
+        ("id", models.AutoField(primary_key=True)),
+        ("name", models.CharField(max_length=100)),
+        ("author", models.ForeignKey("Author", on_delete=models.CASCADE)),
+    ]
+
+    state.create_table("myapp", "Book", fields, {})
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_book")
+    # ForeignKey "author" should become column "author_id"
+    assert table.has_column("author_id")
+    assert not table.has_column("author")
+    assert table.column("author_id").db_type == "integer"
+
+
+def test_project_state_one_to_one_column_naming():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+
+    fields = [
+        ("id", models.AutoField(primary_key=True)),
+        ("user", models.OneToOneField("User", on_delete=models.CASCADE)),
+    ]
+
+    state.create_table("myapp", "Profile", fields, {})
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_profile")
+    assert table.has_column("user_id")
+    assert not table.has_column("user")
+
+
+def test_project_state_rename_table():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+
+    fields = [("id", models.AutoField(primary_key=True))]
+    state.create_table("myapp", "Person", fields, {})
+
+    # Rename table
+    state.rename_table("myapp", "Person", "custom_people")
+
+    schema = state.to_schema_state()
+    assert schema.has_table("custom_people")
+    assert not schema.has_table("myapp_person")
+
+
+def test_project_state_model_to_table_mapping():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+
+    fields = [("id", models.AutoField(primary_key=True))]
+    state.create_table("myapp", "Person", fields, {"db_table": "custom_people"})
+
+    # _find_table should work via the mapping
+    assert state._find_table("myapp", "Person") == "custom_people"
+
+    # After drop, mapping should be cleaned up
+    state.drop_table("myapp", "Person")
+    assert state._find_table("myapp", "Person") is None
+
+
+def test_project_state_remove_fk_column():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+
+    fields = [
+        ("id", models.AutoField(primary_key=True)),
+        ("author", models.ForeignKey("Author", on_delete=models.CASCADE)),
+    ]
+
+    state.create_table("myapp", "Book", fields, {})
+    # RemoveField uses the field name "author", not the column name "author_id"
+    state.remove_column("myapp", "Book", "author")
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_book")
+    assert not table.has_column("author_id")
+    assert not table.has_column("author")
+
+
 def test_project_state_field_type_mapping():
     from django_migration_audit.core.state import ProjectState
     from django.db import models

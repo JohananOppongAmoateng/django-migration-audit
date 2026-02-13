@@ -22,8 +22,37 @@ def create_mock_graph(nodes_dict, ordered_nodes):
     Returns:
         A mock graph with leaf_nodes() and iterative_dfs() properly configured
     """
+    # Create a mock map of keys to Node objects
+    mock_node_map = {}
+    mock_nodes = {}  # Map keys to migrations
+
+    for key, node in nodes_dict.items():
+        # In the test setup, nodes_dict values are treating as 'nodes' wrapping a migration
+        # But in reality, graph.nodes[key] is the migration, and graph.node_map[key] is the Node
+        # We need to adapt the test data or the mock structure.
+        # Let's assume nodes_dict values are the "Migration" objects for simplicity in existing tests
+        # And we create fake "Node" objects for node_map.
+
+        # The existing tests create a mock "node" that has a .migration attribute.
+        # This matches the OLD buggy code expectation: migration = self.graph.nodes[node].migration
+        # BUT the NEW code expects: migration = self.graph.nodes[node_key]
+        # So we need to change how the mock graph is constructed to store the migration directly in nodes.
+
+        if hasattr(node, "migration"):
+            mock_nodes[key] = node.migration
+        else:
+            mock_nodes[
+                key
+            ] = node  # Assume it's already the migration object if no .migration attr
+
+        # Create a dummy Node object for node_map
+        mock_graph_node = Mock()
+        mock_graph_node.key = key
+        mock_node_map[key] = mock_graph_node
+
     mock_graph = Mock()
-    mock_graph.nodes = nodes_dict
+    mock_graph.nodes = mock_nodes
+    mock_graph.node_map = mock_node_map
 
     # Find leaf nodes (nodes that are not dependencies of other nodes)
     # For simplicity, assume the last node in ordered_nodes is the leaf
@@ -34,11 +63,11 @@ def create_mock_graph(nodes_dict, ordered_nodes):
 
     mock_graph.leaf_nodes.return_value = leaf_nodes
 
-    # iterative_dfs from a leaf should return nodes in reverse topological order
-    # (leaf first, then dependencies in reverse order)
+    # iterative_dfs from a leaf should return KEYS in reversed order
     def iterative_dfs(start_node):
-        if start_node in ordered_nodes:
-            idx = ordered_nodes.index(start_node)
+        # start_node is the Node object from node_map
+        if start_node.key in ordered_nodes:
+            idx = ordered_nodes.index(start_node.key)
             # Return from start_node back to the beginning (reverse order from leaf)
             return reversed(ordered_nodes[: idx + 1])
         return []
@@ -480,7 +509,6 @@ class TestMigrationExtractor:
 
     def test_ordered_applied_nodes(self):
         """Test that applied nodes are returned in topological order."""
-        # For testing _ordered_applied_nodes, we need a graph with multiple leaf paths
         # Each applied node should be returned in proper order
         ordered_nodes = [
             ("app1", "0001_initial"),
@@ -488,7 +516,16 @@ class TestMigrationExtractor:
             ("app1", "0002_auto"),
             ("app2", "0002_auto"),
         ]
-        mock_graph = create_mock_graph({}, ordered_nodes)
+
+        # We need to provide nodes_dict for create_mock_graph to populate node_map
+        nodes_dict = {
+            ("app1", "0001_initial"): Mock(),
+            ("app2", "0001_initial"): Mock(),
+            ("app1", "0002_auto"): Mock(),
+            ("app2", "0002_auto"): Mock(),
+        }
+
+        mock_graph = create_mock_graph(nodes_dict, ordered_nodes)
 
         extractor = MigrationExtractor(
             migration_graph=mock_graph,
@@ -500,11 +537,12 @@ class TestMigrationExtractor:
 
         ordered = extractor._ordered_applied_nodes()
 
-        # Should only include applied nodes. Due to our mock implementation,
-        # nodes are traversed from leaf back to root, then reversed.
-        # The applied nodes should maintain relative order
+        # Should only include applied nodes
+        assert len(ordered) == 2
         assert ("app2", "0001_initial") in ordered
         assert ("app1", "0002_auto") in ordered
+        # Verify topological ordering: app2.0001 comes before app1.0002
+        assert ordered.index(("app2", "0001_initial")) < ordered.index(("app1", "0002_auto"))
 
     def test_apply_operation_sets_app_label(self):
         """Test that app_label is set on operations that don't have it."""
@@ -569,6 +607,49 @@ class TestMigrationExtractor:
         assert schema.has_table("custom_people")
         assert not schema.has_table("myapp_person")
 
+    def test_build_state_create_model_with_foreign_key(self):
+        """Test that FK fields get _id suffix on column names."""
+        mock_migration = Mock()
+        mock_migration.app_label = "shop"
+        mock_migration.operations = [
+            model_ops.CreateModel(
+                name="Category",
+                fields=[
+                    ("id", models.AutoField(primary_key=True)),
+                    ("name", models.CharField(max_length=100)),
+                ],
+                options={},
+            ),
+            model_ops.CreateModel(
+                name="Product",
+                fields=[
+                    ("id", models.AutoField(primary_key=True)),
+                    ("title", models.CharField(max_length=200)),
+                    ("category", models.ForeignKey("Category", on_delete=models.CASCADE)),
+                ],
+                options={},
+            ),
+        ]
+
+        mock_node = Mock()
+        mock_node.migration = mock_migration
+
+        nodes_dict = {("shop", "0001_initial"): mock_node}
+        ordered_nodes = [("shop", "0001_initial")]
+        mock_graph = create_mock_graph(nodes_dict, ordered_nodes)
+
+        extractor = MigrationExtractor(
+            migration_graph=mock_graph, applied_nodes={("shop", "0001_initial")}
+        )
+
+        schema = extractor.build_state()
+
+        product_table = schema.table("shop_product")
+        # FK field "category" should be stored as column "category_id"
+        assert product_table.has_column("category_id")
+        assert not product_table.has_column("category")
+        assert product_table.column("category_id").db_type == "integer"
+
     def test_build_state_only_applied_migrations(self):
         """Test that only applied migrations are included in state."""
         # Create two migrations
@@ -629,7 +710,13 @@ class TestSchemaOperations:
         assert field_ops.AddField in SCHEMA_OPS
         assert field_ops.RemoveField in SCHEMA_OPS
         assert field_ops.AlterField in SCHEMA_OPS
+        assert model_ops.AlterModelTable in SCHEMA_OPS
         assert model_ops.AddIndex in SCHEMA_OPS
         assert model_ops.RemoveIndex in SCHEMA_OPS
         assert model_ops.AddConstraint in SCHEMA_OPS
         assert model_ops.RemoveConstraint in SCHEMA_OPS
+
+    def test_schema_ops_excludes_non_column_operations(self):
+        """AlterUniqueTogether/AlterIndexTogether don't affect column-level schema."""
+        assert model_ops.AlterUniqueTogether not in SCHEMA_OPS
+        assert model_ops.AlterIndexTogether not in SCHEMA_OPS

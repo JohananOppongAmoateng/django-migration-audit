@@ -9,7 +9,7 @@ from django.core.management.base import BaseCommand
 from django.db import connections
 
 from django_migration_audit.core.extractor import MigrationExtractor
-from django_migration_audit.core.introspection import introspect_schema
+from django_migration_audit.core.introspection import introspect_schema, is_internal_table
 from django_migration_audit.core.loader import load_migration_history
 from django_migration_audit.invariants.base import (
     AllExpectedColumnsExist,
@@ -17,6 +17,10 @@ from django_migration_audit.invariants.base import (
     NoMissingMigrationFiles,
     NoUnexpectedTables,
     SquashMigrationsProperlyReplaced,
+)
+from django_migration_audit.invariants.columns import (
+    ColumnNullabilityMatches,
+    NoUnexpectedColumns,
 )
 
 
@@ -124,7 +128,17 @@ class Command(BaseCommand):
         extractor = MigrationExtractor(
             migration_graph=loader.graph, applied_nodes={(m.app, m.name) for m in history.applied}
         )
-        expected_schema = extractor.build_state()
+        raw_expected = extractor.build_state()
+
+        # Filter out Django internal tables from the expected schema
+        from django_migration_audit.core.state import SchemaState
+
+        filtered_tables = {
+            name: table
+            for name, table in raw_expected.tables.items()
+            if not is_internal_table(name)
+        }
+        expected_schema = SchemaState(tables=filtered_tables)
 
         # Introspect actual schema
         self.stdout.write("  Introspecting actual database schema...")
@@ -138,6 +152,8 @@ class Command(BaseCommand):
             AllExpectedTablesExist(),
             NoUnexpectedTables(),
             AllExpectedColumnsExist(),
+            NoUnexpectedColumns(),
+            ColumnNullabilityMatches(),
         ]
 
         violations = []

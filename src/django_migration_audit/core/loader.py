@@ -81,9 +81,9 @@ def _build_forward_plan(using: str) -> List[MigrationNode]:
 
     forward_plan: List[MigrationNode] = []
 
-    for migration_key, backwards in plan:
+    for migration, backwards in plan:
         if not backwards:
-            forward_plan.append(_node(migration_key))
+            forward_plan.append(MigrationNode(app=migration.app_label, name=migration.name))
 
     return forward_plan
 

@@ -20,6 +20,9 @@ The state classes represent:
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
+from django.db.models.fields import NOT_PROVIDED
+from django.db.models.fields.related import ForeignKey, OneToOneField
+
 # ----------------------------
 # Column
 # ----------------------------
@@ -97,6 +100,7 @@ class ProjectState:
 
     def __init__(self):
         self._tables: Dict[str, Dict[str, any]] = {}
+        self._model_to_table: Dict[tuple, str] = {}  # (app_label, model_name_lower) -> table_name
 
     def create_table(self, app_label: str, name: str, fields: list, options: dict):
         """Create a new table from a CreateModel operation."""
@@ -104,8 +108,9 @@ class ProjectState:
         columns = {}
 
         for field_name, field_obj in fields:
-            columns[field_name] = ColumnState(
-                name=field_name,
+            col_name = self._get_column_name(field_name, field_obj)
+            columns[col_name] = ColumnState(
+                name=col_name,
                 db_type=self._get_db_type(field_obj),
                 null=field_obj.null,
                 default=self._get_default(field_obj),
@@ -115,21 +120,22 @@ class ProjectState:
             "name": table_name,
             "columns": columns,
         }
+        self._model_to_table[(app_label, name.lower())] = table_name
 
     def drop_table(self, app_label: str, name: str):
         """Drop a table from a DeleteModel operation."""
-        # Find and remove the table (need to search by app_label + name)
         table_name = self._find_table(app_label, name)
         if table_name:
             del self._tables[table_name]
+            self._model_to_table.pop((app_label, name.lower()), None)
 
     def add_column(self, app_label: str, model_name: str, field: any):
         """Add a column from an AddField operation."""
         table_name = self._find_table(app_label, model_name)
         if table_name:
-            field_name = field.name
-            self._tables[table_name]["columns"][field_name] = ColumnState(
-                name=field_name,
+            col_name = self._get_column_name(field.name, field)
+            self._tables[table_name]["columns"][col_name] = ColumnState(
+                name=col_name,
                 db_type=self._get_db_type(field),
                 null=field.null,
                 default=self._get_default(field),
@@ -138,20 +144,34 @@ class ProjectState:
     def remove_column(self, app_label: str, model_name: str, name: str):
         """Remove a column from a RemoveField operation."""
         table_name = self._find_table(app_label, model_name)
-        if table_name and name in self._tables[table_name]["columns"]:
-            del self._tables[table_name]["columns"][name]
+        if table_name:
+            columns = self._tables[table_name]["columns"]
+            # RemoveField provides the field name, but the column may have _id suffix (FK/O2O)
+            if name in columns:
+                del columns[name]
+            elif f"{name}_id" in columns:
+                del columns[f"{name}_id"]
 
     def alter_column(self, app_label: str, model_name: str, field: any):
         """Alter a column from an AlterField operation."""
         table_name = self._find_table(app_label, model_name)
         if table_name:
-            field_name = field.name
-            self._tables[table_name]["columns"][field_name] = ColumnState(
-                name=field_name,
+            col_name = self._get_column_name(field.name, field)
+            self._tables[table_name]["columns"][col_name] = ColumnState(
+                name=col_name,
                 db_type=self._get_db_type(field),
                 null=field.null,
                 default=self._get_default(field),
             )
+
+    def rename_table(self, app_label: str, model_name: str, new_table_name: str):
+        """Rename a table from an AlterModelTable operation."""
+        old_table_name = self._find_table(app_label, model_name)
+        if old_table_name and new_table_name:
+            table_data = self._tables.pop(old_table_name)
+            table_data["name"] = new_table_name
+            self._tables[new_table_name] = table_data
+            self._model_to_table[(app_label, model_name.lower())] = new_table_name
 
     def add_constraint(self, app_label: str, model_name: str, constraint: any):
         """Add a constraint (placeholder for future implementation)."""
@@ -190,15 +210,23 @@ class ProjectState:
 
     def _find_table(self, app_label: str, model_name: str) -> Optional[str]:
         """Find a table by app_label and model_name."""
-        # Simple approach: look for app_label_modelname pattern
-        expected_name = f"{app_label}_{model_name.lower()}"
-        if expected_name in self._tables:
-            return expected_name
-        # Fallback: search all tables
-        for table_name in self._tables:
-            if table_name.endswith(f"_{model_name.lower()}"):
-                return table_name
+        table_name = self._model_to_table.get((app_label, model_name.lower()))
+        if table_name and table_name in self._tables:
+            return table_name
         return None
+
+    def _get_column_name(self, field_name: str, field_obj: any) -> str:
+        """Get the actual DB column name for a field.
+
+        ForeignKey and OneToOneField create columns with an '_id' suffix
+        unless db_column is explicitly set.
+        """
+        if isinstance(field_obj, (ForeignKey, OneToOneField)):
+            db_column = getattr(field_obj, "db_column", None)
+            if db_column:
+                return db_column
+            return f"{field_name}_id"
+        return field_name
 
     def _get_db_type(self, field: any) -> str:
         """Get the database type for a field."""
@@ -225,6 +253,10 @@ class ProjectState:
 
     def _get_default(self, field: any) -> Optional[str]:
         """Get the default value for a field."""
-        if hasattr(field, "default") and field.default is not None:
+        if (
+            hasattr(field, "default")
+            and field.default is not NOT_PROVIDED
+            and field.default is not None
+        ):
             return str(field.default)
         return None

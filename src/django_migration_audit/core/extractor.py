@@ -27,8 +27,6 @@ SCHEMA_OPS = (
     fields.RemoveField,
     fields.AlterField,
     models.AlterModelTable,
-    models.AlterUniqueTogether,
-    models.AlterIndexTogether,
     models.AddIndex,
     models.RemoveIndex,
     models.AddConstraint,
@@ -50,8 +48,8 @@ class MigrationExtractor:
         """Build the expected schema state from applied migrations."""
         state = ProjectState()
 
-        for node in self._ordered_applied_nodes():
-            migration = self.graph.nodes[node].migration
+        for node_key in self._ordered_applied_nodes():
+            migration = self.graph.nodes[node_key]
             self._apply_migration(migration, state)
 
         return state.to_schema_state()
@@ -71,7 +69,9 @@ class MigrationExtractor:
         # The result is in reverse topological order (leaves first)
         all_nodes = []
         for leaf in leaf_nodes:
-            for node in self.graph.iterative_dfs(leaf):
+            # Get the Node object from node_map to pass to iterative_dfs
+            leaf_node = self.graph.node_map[leaf]
+            for node in self.graph.iterative_dfs(leaf_node):
                 if node not in all_nodes:
                     all_nodes.append(node)
 
@@ -127,6 +127,13 @@ class MigrationExtractor:
                 app_label=operation.app_label,
                 model_name=operation.model_name,
                 field=operation.field,
+            )
+
+        elif isinstance(operation, models.AlterModelTable):
+            state.rename_table(
+                app_label=operation.app_label,
+                model_name=operation.name,
+                new_table_name=operation.table,
             )
 
         elif isinstance(operation, models.AddConstraint):

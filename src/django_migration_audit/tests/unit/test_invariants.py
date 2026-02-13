@@ -10,6 +10,17 @@ from django_migration_audit.invariants.base import (
     NoUnexpectedTables,
     AllExpectedColumnsExist,
 )
+from django_migration_audit.invariants.columns import (
+    NoUnexpectedColumns,
+    ColumnNullabilityMatches,
+    NoMissingPrimaryKeys,
+)
+from django_migration_audit.invariants.tables import (
+    NoEmptyTables,
+    TableNamingConvention,
+    NoLegacyTables,
+    TableCountReasonable,
+)
 
 
 # ----------------------------
@@ -338,9 +349,295 @@ def test_violation_severity_enum():
     assert Severity.INFO.value == "info"
 
 
-class TestMigrationInvariants:
-    """Placeholder test class (kept for compatibility)."""
+# ----------------------------
+# NoUnexpectedColumns Tests
+# ----------------------------
 
-    def test_placeholder(self):
-        """Placeholder test."""
-        assert True
+
+def test_no_unexpected_columns_pass():
+    """Test NoUnexpectedColumns when columns match."""
+    invariant = NoUnexpectedColumns()
+
+    schema = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "id": ColumnState("id", "integer", False),
+                    "name": ColumnState("name", "varchar", False),
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_no_unexpected_columns_fail():
+    """Test NoUnexpectedColumns when extra column exists."""
+    invariant = NoUnexpectedColumns()
+
+    expected = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "id": ColumnState("id", "integer", False),
+                },
+            ),
+        }
+    )
+
+    actual = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "id": ColumnState("id", "integer", False),
+                    "extra": ColumnState("extra", "text", True),
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert "extra" in violations[0].message
+
+
+# ----------------------------
+# ColumnNullabilityMatches Tests
+# ----------------------------
+
+
+def test_column_nullability_matches_pass():
+    """Test ColumnNullabilityMatches when nullability matches."""
+    invariant = ColumnNullabilityMatches()
+
+    schema = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "id": ColumnState("id", "integer", False),
+                    "bio": ColumnState("bio", "text", True),
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_column_nullability_matches_fail():
+    """Test ColumnNullabilityMatches when nullability differs."""
+    invariant = ColumnNullabilityMatches()
+
+    expected = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "name": ColumnState("name", "varchar", False),
+                },
+            ),
+        }
+    )
+
+    actual = SchemaState(
+        tables={
+            "users": TableState(
+                name="users",
+                columns={
+                    "name": ColumnState("name", "varchar", True),  # Mismatch!
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert "nullability" in violations[0].message.lower()
+
+
+# ----------------------------
+# NoMissingPrimaryKeys Tests
+# ----------------------------
+
+
+def test_no_missing_primary_keys_pass():
+    """Test NoMissingPrimaryKeys when all tables have id."""
+    invariant = NoMissingPrimaryKeys()
+
+    actual = SchemaState(
+        tables={
+            "myapp_user": TableState(
+                name="myapp_user",
+                columns={
+                    "id": ColumnState("id", "integer", False),
+                    "name": ColumnState("name", "varchar", False),
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 0
+
+
+def test_no_missing_primary_keys_fail():
+    """Test NoMissingPrimaryKeys when a table has no pk."""
+    invariant = NoMissingPrimaryKeys()
+
+    actual = SchemaState(
+        tables={
+            "myapp_params": TableState(
+                name="myapp_params",
+                columns={
+                    "key": ColumnState("key", "varchar", False),
+                    "value": ColumnState("value", "text", True),
+                },
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 1
+    assert "missing a primary key" in violations[0].message
+
+
+# ----------------------------
+# NoEmptyTables Tests
+# ----------------------------
+
+
+def test_no_empty_tables_pass():
+    """Test NoEmptyTables when all tables have columns."""
+    invariant = NoEmptyTables()
+
+    actual = SchemaState(
+        tables={
+            "myapp_user": TableState(
+                name="myapp_user",
+                columns={"id": ColumnState("id", "integer", False)},
+            ),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 0
+
+
+def test_no_empty_tables_fail():
+    """Test NoEmptyTables when a table has no columns."""
+    invariant = NoEmptyTables()
+
+    actual = SchemaState(
+        tables={
+            "myapp_empty": TableState(name="myapp_empty", columns={}),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 1
+    assert "no columns" in violations[0].message
+
+
+# ----------------------------
+# TableNamingConvention Tests
+# ----------------------------
+
+
+def test_table_naming_convention_pass():
+    """Test TableNamingConvention with proper app_model naming."""
+    invariant = TableNamingConvention()
+
+    actual = SchemaState(
+        tables={
+            "myapp_user": TableState(name="myapp_user"),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 0
+
+
+def test_table_naming_convention_fail():
+    """Test TableNamingConvention with non-standard naming."""
+    invariant = TableNamingConvention()
+
+    actual = SchemaState(
+        tables={
+            "users": TableState(name="users"),  # No underscore
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 1
+    assert "naming convention" in violations[0].message.lower()
+
+
+# ----------------------------
+# NoLegacyTables Tests
+# ----------------------------
+
+
+def test_no_legacy_tables_pass():
+    """Test NoLegacyTables when no legacy tables exist."""
+    invariant = NoLegacyTables()
+
+    actual = SchemaState(
+        tables={
+            "myapp_user": TableState(name="myapp_user"),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 0
+
+
+def test_no_legacy_tables_fail():
+    """Test NoLegacyTables when legacy tables exist."""
+    invariant = NoLegacyTables()
+
+    actual = SchemaState(
+        tables={
+            "old_users": TableState(name="old_users"),
+            "temp_data": TableState(name="temp_data"),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 2
+
+
+# ----------------------------
+# TableCountReasonable Tests
+# ----------------------------
+
+
+def test_table_count_reasonable_pass():
+    """Test TableCountReasonable with reasonable count."""
+    invariant = TableCountReasonable()
+
+    actual = SchemaState(
+        tables={
+            "myapp_user": TableState(name="myapp_user"),
+        }
+    )
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 0
+
+
+def test_table_count_reasonable_too_few():
+    """Test TableCountReasonable with zero user tables."""
+    invariant = TableCountReasonable()
+
+    actual = SchemaState(tables={})
+
+    violations = invariant.check(expected_schema=actual, actual_schema=actual)
+    assert len(violations) == 1
+    assert "too few" in violations[0].message.lower()

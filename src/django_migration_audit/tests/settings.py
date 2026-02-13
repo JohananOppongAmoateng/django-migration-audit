@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
     "django_migration_audit",
-    "django_migration_audit.tests",
+    "django_migration_audit.tests.apps.TestsConfig",  # Use AppConfig to get the label
 ]
 
 MIDDLEWARE = []
@@ -57,6 +57,12 @@ DATABASES = {
         "PORT": DB_PORT,
     }
 }
+
+if DB_BACKEND == "mysql":
+    DATABASES["default"]["OPTIONS"] = {
+        "charset": "utf8mb4",
+    }
+
 
 # Internationalization
 # https://docs.djangoproject.com/en/stable/topics/i18n/

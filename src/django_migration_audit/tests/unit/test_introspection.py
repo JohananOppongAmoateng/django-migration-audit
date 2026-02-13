@@ -128,7 +128,7 @@ class TestIntrospectSchema:
 
     @patch("django_migration_audit.core.introspection.connections")
     def test_introspect_schema_filters_django_tables(self, mock_connections):
-        """Test that Django internal tables are filtered out."""
+        """Test that Django internal tables are filtered out via prefix matching."""
         # Setup mocks
         mock_cursor = MagicMock()
         mock_connection = MagicMock()
@@ -143,8 +143,10 @@ class TestIntrospectSchema:
             "auth_permission",
             "auth_group",
             "auth_group_permissions",
+            "auth_user",
             "auth_user_groups",
             "auth_user_user_permissions",
+            "sqlite_sequence",
         ]
 
         def get_table_description(cursor, table_name):
@@ -166,6 +168,8 @@ class TestIntrospectSchema:
         assert schema.has_table("myapp_person")
         assert not schema.has_table("django_migrations")
         assert not schema.has_table("auth_permission")
+        assert not schema.has_table("auth_user")
+        assert not schema.has_table("sqlite_sequence")
 
     @patch("django_migration_audit.core.introspection.connections")
     def test_introspect_schema_custom_database(self, mock_connections):
@@ -203,10 +207,11 @@ class TestIntrospectTableColumns:
         ]
 
         mock_introspection.get_table_description.return_value = table_description
+        # Django introspection returns storage types, not logical types
         mock_introspection.get_field_type.side_effect = lambda code, _: {
             1: "AutoField",
             2: "CharField",
-            3: "EmailField",
+            3: "CharField",
         }.get(code, "unknown")
 
         # Execute
@@ -393,41 +398,17 @@ class TestNormalizeDbType:
 
         assert result == "double precision"
 
-    def test_normalize_db_type_email_field(self):
-        """Test normalizing EmailField type."""
+    def test_normalize_db_type_unknown_falls_through_to_lowercase(self):
+        """Test that unmapped types fall through to lowercase.
+
+        Django introspection returns storage types (IntegerField, CharField),
+        not logical types (ForeignKey, EmailField), so those are not mapped.
+        """
         mock_introspection = Mock()
         mock_introspection.get_field_type.return_value = "EmailField"
 
         result = _normalize_db_type(1, mock_introspection)
-
-        assert result == "varchar"
-
-    def test_normalize_db_type_url_field(self):
-        """Test normalizing URLField type."""
-        mock_introspection = Mock()
-        mock_introspection.get_field_type.return_value = "URLField"
-
-        result = _normalize_db_type(1, mock_introspection)
-
-        assert result == "varchar"
-
-    def test_normalize_db_type_foreign_key(self):
-        """Test normalizing ForeignKey type."""
-        mock_introspection = Mock()
-        mock_introspection.get_field_type.return_value = "ForeignKey"
-
-        result = _normalize_db_type(1, mock_introspection)
-
-        assert result == "integer"
-
-    def test_normalize_db_type_one_to_one_field(self):
-        """Test normalizing OneToOneField type."""
-        mock_introspection = Mock()
-        mock_introspection.get_field_type.return_value = "OneToOneField"
-
-        result = _normalize_db_type(1, mock_introspection)
-
-        assert result == "integer"
+        assert result == "emailfield"
 
     def test_normalize_db_type_unknown_type(self):
         """Test normalizing unknown type."""
