@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Django](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
+[![Latest on Django Packages](https://img.shields.io/badge/PyPI-{{ package.slug}}-tags-8c3c26.svg)](https://djangopackages.org/packages/p/django-migration-audit/)
+                        
 
 > **⚠️ Work in Progress**
 >
@@ -282,3 +284,4 @@ Created by Johanan Oppong Amoateng
 
 - **Issues**: [GitHub Issues](https://github.com/JohananOppongAmoateng/django-migration-audit/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/JohananOppongAmoateng/django-migration-audit/discussions)
+                        
