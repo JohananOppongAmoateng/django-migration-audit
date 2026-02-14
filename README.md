@@ -5,7 +5,7 @@
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Django](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
-[![Latest on Django Packages](https://img.shields.io/badge/PyPI-{{ package.slug}}-tags-8c3c26.svg)](https://djangopackages.org/packages/p/django-migration-audit/)
+[![Latest on Django Packages](https://img.shields.io/badge/PyPI--django--migration--audit--tags--8c3c26.svg)](https://djangopackages.org/packages/p/django-migration-audit/)
                         
 
 > **⚠️ Work in Progress**
