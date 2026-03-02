@@ -56,29 +56,24 @@ class MigrationExtractor:
 
     def _ordered_applied_nodes(self):
         """
-        Return applied migrations in topological order.
+        Return applied migrations in topological order (dependencies first).
 
-        Uses Django's MigrationGraph iterative_dfs to traverse from leaf nodes,
-        which gives us all reachable nodes in reverse topological order.
-        We reverse the result to get proper dependency order.
+        Django's iterative_dfs traverses from a leaf node back through its
+        ancestor chain, visiting parents before the leaf. Starting from the
+        leaf and collecting all ancestors therefore naturally produces nodes
+        in dependency order (root first, leaf last) — no reversal needed.
         """
         # Get all leaf nodes (migrations with no dependents)
         leaf_nodes = self.graph.leaf_nodes()
 
-        # Use iterative_dfs to traverse from leaves, collecting all nodes
-        # The result is in reverse topological order (leaves first)
         all_nodes = []
         for leaf in leaf_nodes:
-            # Get the Node object from node_map to pass to iterative_dfs
             leaf_node = self.graph.node_map[leaf]
             for node in self.graph.iterative_dfs(leaf_node):
                 if node not in all_nodes:
                     all_nodes.append(node)
 
-        # Reverse to get proper topological order (dependencies first)
-        all_nodes.reverse()
-
-        # Filter to only applied nodes
+        # Filter to only applied nodes, preserving topological order
         return [node for node in all_nodes if node in self.applied_nodes]
 
     def _apply_migration(self, migration, state):
@@ -109,10 +104,16 @@ class MigrationExtractor:
             )
 
         elif isinstance(operation, fields.AddField):
+            # Ensure field.name is set — Django migration operations store the
+            # field name in operation.name, but the field object itself is not
+            # always contributed to a model class, so field.name may be None.
+            field = operation.field
+            if not field.name:
+                field.name = operation.name
             state.add_column(
                 app_label=operation.app_label,
                 model_name=operation.model_name,
-                field=operation.field,
+                field=field,
             )
 
         elif isinstance(operation, fields.RemoveField):
@@ -123,10 +124,14 @@ class MigrationExtractor:
             )
 
         elif isinstance(operation, fields.AlterField):
+            # Same field.name fix as AddField above.
+            field = operation.field
+            if not field.name:
+                field.name = operation.name
             state.alter_column(
                 app_label=operation.app_label,
                 model_name=operation.model_name,
-                field=operation.field,
+                field=field,
             )
 
         elif isinstance(operation, models.AlterModelTable):

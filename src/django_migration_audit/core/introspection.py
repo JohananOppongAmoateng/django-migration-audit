@@ -94,20 +94,34 @@ def _normalize_db_type(type_code, introspection, description=None) -> str:
     except (KeyError, AttributeError):
         data_type = "unknown"
 
-    # Normalize common variations
-    # Note: ForeignKey, OneToOneField, EmailField, URLField are not included
-    # because Django's introspection returns storage-level types (IntegerField,
-    # CharField), not logical types.
+    # Normalise the Django field-type name returned by get_field_type() to
+    # the same canonical strings used in state.py's _get_db_type().
+    # This lets Comparison B compare apples to apples across all backends.
+    #
+    # Note: ForeignKey / OneToOneField are NOT listed here because
+    # Django introspection returns the storage-level type (IntegerField /
+    # BigIntegerField), not the logical relation type.
     type_map = {
+        # Auto / integer
         "AutoField": "integer",
         "BigAutoField": "bigint",
+        "SmallAutoField": "integer",
         "IntegerField": "integer",
         "BigIntegerField": "bigint",
+        "SmallIntegerField": "integer",
+        "PositiveIntegerField": "integer",
+        "PositiveSmallIntegerField": "integer",
+        # Character / text
         "CharField": "varchar",
         "TextField": "text",
+        # Boolean
         "BooleanField": "boolean",
+        "NullBooleanField": "boolean",
+        # Date / time
         "DateField": "date",
         "DateTimeField": "timestamp",
+        "TimeField": "time",
+        # Numeric
         "DecimalField": "numeric",
         "FloatField": "double precision",
     }
