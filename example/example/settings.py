@@ -73,13 +73,51 @@ WSGI_APPLICATION = "example.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# Three backends are supported. Uncomment the one you want to use and
+# comment out the others.  Only SQLite works out-of-the-box; MySQL and
+# PostgreSQL need the database created first (see example/README.md).
 
+# ── SQLite (default, no extra setup) ─────────────────────────────────────────
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+# ── MySQL ─────────────────────────────────────────────────────────────────────
+# Prerequisites:
+#   pip install mysqlclient
+#   mysql -u root -e "CREATE DATABASE migration_audit_demo CHARACTER SET utf8mb4;"
+#
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": "migration_audit_demo",
+#         "USER": "root",
+#         "PASSWORD": "",
+#         "HOST": "localhost",
+#         "PORT": "3306",
+#         "OPTIONS": {"charset": "utf8mb4"},
+#     }
+# }
+
+# ── PostgreSQL ────────────────────────────────────────────────────────────────
+# Prerequisites:
+#   pip install psycopg2-binary
+#   createdb migration_audit_demo
+#
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": "migration_audit_demo",
+#         "USER": "postgres",
+#         "PASSWORD": "",
+#         "HOST": "localhost",
+#         "PORT": "5432",
+#     }
+# }
 
 
 # Password validation
