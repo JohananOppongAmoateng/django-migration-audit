@@ -63,13 +63,14 @@ def create_mock_graph(nodes_dict, ordered_nodes):
 
     mock_graph.leaf_nodes.return_value = leaf_nodes
 
-    # iterative_dfs from a leaf should return KEYS in reversed order
+    # iterative_dfs from a leaf returns nodes in topological order
+    # (dependencies first, leaf last) — matching Django's real implementation.
     def iterative_dfs(start_node):
         # start_node is the Node object from node_map
         if start_node.key in ordered_nodes:
             idx = ordered_nodes.index(start_node.key)
-            # Return from start_node back to the beginning (reverse order from leaf)
-            return reversed(ordered_nodes[: idx + 1])
+            # Return ancestors + leaf in dependency order (root → leaf)
+            return ordered_nodes[: idx + 1]
         return []
 
     mock_graph.iterative_dfs.side_effect = iterative_dfs

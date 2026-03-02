@@ -108,10 +108,14 @@ class ProjectState:
         columns = {}
 
         for field_name, field_obj in fields:
+            db_type = self._get_db_type(field_obj)
+            if db_type is None:
+                # ManyToManyField and similar — no column in this table.
+                continue
             col_name = self._get_column_name(field_name, field_obj)
             columns[col_name] = ColumnState(
                 name=col_name,
-                db_type=self._get_db_type(field_obj),
+                db_type=db_type,
                 null=field_obj.null,
                 default=self._get_default(field_obj),
             )
@@ -131,12 +135,16 @@ class ProjectState:
 
     def add_column(self, app_label: str, model_name: str, field: any):
         """Add a column from an AddField operation."""
+        db_type = self._get_db_type(field)
+        if db_type is None:
+            # ManyToManyField — no column in this table.
+            return
         table_name = self._find_table(app_label, model_name)
         if table_name:
             col_name = self._get_column_name(field.name, field)
             self._tables[table_name]["columns"][col_name] = ColumnState(
                 name=col_name,
-                db_type=self._get_db_type(field),
+                db_type=db_type,
                 null=field.null,
                 default=self._get_default(field),
             )
@@ -229,25 +237,47 @@ class ProjectState:
         return field_name
 
     def _get_db_type(self, field: any) -> str:
-        """Get the database type for a field."""
-        # Simplified type mapping
+        """Get the normalised database type string for a field.
+
+        Returns the same normalised strings used by introspection.py so that
+        Comparison B (expected ↔ actual) can compare apples to apples.
+        """
         field_type = type(field).__name__
         type_map = {
+            # Auto / integer fields
             "AutoField": "integer",
             "BigAutoField": "bigint",
+            "SmallAutoField": "integer",
             "IntegerField": "integer",
             "BigIntegerField": "bigint",
+            "SmallIntegerField": "integer",
+            "PositiveIntegerField": "integer",
+            "PositiveSmallIntegerField": "integer",
+            # Character / text fields
             "CharField": "varchar",
-            "TextField": "text",
-            "BooleanField": "boolean",
-            "DateField": "date",
-            "DateTimeField": "timestamp",
-            "DecimalField": "numeric",
-            "FloatField": "double precision",
+            "SlugField": "varchar",  # SlugField is a CharField subclass
             "EmailField": "varchar",
             "URLField": "varchar",
+            "UUIDField": "varchar",  # stored as varchar in SQLite/MySQL
+            "TextField": "text",
+            # Boolean
+            "BooleanField": "boolean",
+            "NullBooleanField": "boolean",
+            # Date / time
+            "DateField": "date",
+            "DateTimeField": "timestamp",
+            "TimeField": "time",
+            # Numeric
+            "DecimalField": "numeric",
+            "FloatField": "double precision",
+            # Relations — column uses referenced PK's storage type.
+            # AutoField (integer) is the default; BigAutoField projects will
+            # see "bigint" in PostgreSQL/MySQL but both sides normalise the
+            # same way so the comparison is still consistent.
             "ForeignKey": "integer",
             "OneToOneField": "integer",
+            # ManyToManyField creates a separate join table, not a column.
+            "ManyToManyField": None,
         }
         return type_map.get(field_type, "unknown")
 
