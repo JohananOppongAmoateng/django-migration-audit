@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0]
+
+- Fixed applied migrations ordering to respect dependencies without unnecessary reversal.
+
+- Ensured AddField and AlterField operations correctly set field.name to prevent missing column errors.
+
+- Unified database type normalization across introspection and state handling.
+
+- Added proper handling for SlugField, EmailField, URLField, UUIDField, ForeignKey, and OneToOneField.
+
+- Prevented accidental column creation for ManyToManyField
+
+- Added example project for users and contributors to set up a demo database with schema issues and run audit_migrations to detect them
+
 ## [0.1.1]
 - Added `CHANGELOG.md` and integrated into documentation.
 - Improved CI workflow configuration.
