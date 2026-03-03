@@ -1,6 +1,12 @@
 import pytest
 from django_migration_audit.core.loader import MigrationNode
-from django_migration_audit.core.state import SchemaState, TableState, ColumnState
+from django_migration_audit.core.state import (
+    ColumnState,
+    ConstraintState,
+    IndexState,
+    SchemaState,
+    TableState,
+)
 from django_migration_audit.invariants.base import (
     Violation,
     Severity,
@@ -641,3 +647,248 @@ def test_table_count_reasonable_too_few():
     violations = invariant.check(expected_schema=actual, actual_schema=actual)
     assert len(violations) == 1
     assert "too few" in violations[0].message.lower()
+
+
+# ----------------------------
+# AllExpectedIndexesExist Tests
+# ----------------------------
+
+
+def test_all_expected_indexes_exist_pass():
+    """Test AllExpectedIndexesExist when all indexes are present."""
+    from django_migration_audit.invariants.constraints import AllExpectedIndexesExist
+
+    invariant = AllExpectedIndexesExist()
+
+    idx = IndexState(name="post_title_idx", columns=("title",))
+    table = TableState(name="myapp_post", indexes={"post_title_idx": idx})
+    schema = SchemaState(tables={"myapp_post": table})
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_all_expected_indexes_exist_fail():
+    """Test AllExpectedIndexesExist when an expected index is missing from the DB."""
+    from django_migration_audit.invariants.constraints import AllExpectedIndexesExist
+
+    invariant = AllExpectedIndexesExist()
+
+    idx = IndexState(name="post_title_idx", columns=("title",))
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", indexes={"post_title_idx": idx})}
+    )
+    actual = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post")}  # no indexes
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert violations[0].severity == Severity.ERROR
+    assert "post_title_idx" in violations[0].message
+
+
+def test_all_expected_indexes_exist_skips_missing_tables():
+    """Test AllExpectedIndexesExist skips tables that don't exist in actual."""
+    from django_migration_audit.invariants.constraints import AllExpectedIndexesExist
+
+    invariant = AllExpectedIndexesExist()
+
+    idx = IndexState(name="post_title_idx", columns=("title",))
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", indexes={"post_title_idx": idx})}
+    )
+    actual = SchemaState(tables={})  # table is missing entirely
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 0  # AllExpectedTablesExist handles this
+
+
+# ----------------------------
+# AllExpectedConstraintsExist Tests
+# ----------------------------
+
+
+def test_all_expected_constraints_exist_pass():
+    """Test AllExpectedConstraintsExist when all constraints are present."""
+    from django_migration_audit.invariants.constraints import AllExpectedConstraintsExist
+
+    invariant = AllExpectedConstraintsExist()
+
+    con = ConstraintState(name="post_slug_uniq", constraint_type="unique", columns=("slug",))
+    table = TableState(name="myapp_post", constraints={"post_slug_uniq": con})
+    schema = SchemaState(tables={"myapp_post": table})
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_all_expected_constraints_exist_fail():
+    """Test AllExpectedConstraintsExist when an expected constraint is missing."""
+    from django_migration_audit.invariants.constraints import AllExpectedConstraintsExist
+
+    invariant = AllExpectedConstraintsExist()
+
+    con = ConstraintState(name="post_slug_uniq", constraint_type="unique", columns=("slug",))
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", constraints={"post_slug_uniq": con})}
+    )
+    actual = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post")}  # no constraints
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert violations[0].severity == Severity.ERROR
+    assert "post_slug_uniq" in violations[0].message
+    assert "unique" in violations[0].message
+
+
+def test_all_expected_constraints_check_type():
+    """Test AllExpectedConstraintsExist reports the constraint type in the message."""
+    from django_migration_audit.invariants.constraints import AllExpectedConstraintsExist
+
+    invariant = AllExpectedConstraintsExist()
+
+    con = ConstraintState(name="rating_range", constraint_type="check", columns=())
+    expected = SchemaState(
+        tables={"myapp_review": TableState(name="myapp_review", constraints={"rating_range": con})}
+    )
+    actual = SchemaState(tables={"myapp_review": TableState(name="myapp_review")})
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert "check" in violations[0].message
+
+
+def test_all_expected_constraints_exist_skips_missing_tables():
+    """Test AllExpectedConstraintsExist skips tables missing from actual."""
+    from django_migration_audit.invariants.constraints import AllExpectedConstraintsExist
+
+    invariant = AllExpectedConstraintsExist()
+
+    con = ConstraintState(name="post_slug_uniq", constraint_type="unique", columns=("slug",))
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", constraints={"post_slug_uniq": con})}
+    )
+    actual = SchemaState(tables={})
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 0
+
+
+# ----------------------------
+# NoUnexpectedIndexes Tests
+# ----------------------------
+
+
+def test_no_unexpected_indexes_pass():
+    """Test NoUnexpectedIndexes when DB indexes match migrations exactly."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedIndexes
+
+    invariant = NoUnexpectedIndexes()
+
+    idx = IndexState(name="post_title_idx", columns=("title",))
+    table = TableState(name="myapp_post", indexes={"post_title_idx": idx})
+    schema = SchemaState(tables={"myapp_post": table})
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_no_unexpected_indexes_fail():
+    """Test NoUnexpectedIndexes when DB has an index not in migrations."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedIndexes
+
+    invariant = NoUnexpectedIndexes()
+
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post")}  # no indexes in migrations
+    )
+    extra_idx = IndexState(name="manual_idx", columns=("title",))
+    actual = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", indexes={"manual_idx": extra_idx})}
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert violations[0].severity == Severity.WARNING
+    assert "manual_idx" in violations[0].message
+    assert "not defined in migrations" in violations[0].message
+
+
+def test_no_unexpected_indexes_skips_unknown_tables():
+    """Test NoUnexpectedIndexes skips tables not in expected schema."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedIndexes
+
+    invariant = NoUnexpectedIndexes()
+
+    expected = SchemaState(tables={})
+    extra_idx = IndexState(name="manual_idx", columns=("col",))
+    actual = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post", indexes={"manual_idx": extra_idx})}
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 0  # NoUnexpectedTables handles the missing table
+
+
+# ----------------------------
+# NoUnexpectedConstraints Tests
+# ----------------------------
+
+
+def test_no_unexpected_constraints_pass():
+    """Test NoUnexpectedConstraints when DB constraints match migrations exactly."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedConstraints
+
+    invariant = NoUnexpectedConstraints()
+
+    con = ConstraintState(name="post_slug_uniq", constraint_type="unique", columns=("slug",))
+    table = TableState(name="myapp_post", constraints={"post_slug_uniq": con})
+    schema = SchemaState(tables={"myapp_post": table})
+
+    violations = invariant.check(expected_schema=schema, actual_schema=schema)
+    assert len(violations) == 0
+
+
+def test_no_unexpected_constraints_fail():
+    """Test NoUnexpectedConstraints when DB has a constraint not in migrations."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedConstraints
+
+    invariant = NoUnexpectedConstraints()
+
+    expected = SchemaState(
+        tables={"myapp_post": TableState(name="myapp_post")}  # no constraints in migrations
+    )
+    extra_con = ConstraintState(name="manual_uniq", constraint_type="unique", columns=("slug",))
+    actual = SchemaState(
+        tables={
+            "myapp_post": TableState(name="myapp_post", constraints={"manual_uniq": extra_con})
+        }
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 1
+    assert violations[0].severity == Severity.WARNING
+    assert "manual_uniq" in violations[0].message
+    assert "unique" in violations[0].message
+    assert "not defined in migrations" in violations[0].message
+
+
+def test_no_unexpected_constraints_skips_unknown_tables():
+    """Test NoUnexpectedConstraints skips tables not in expected schema."""
+    from django_migration_audit.invariants.constraints import NoUnexpectedConstraints
+
+    invariant = NoUnexpectedConstraints()
+
+    expected = SchemaState(tables={})
+    extra_con = ConstraintState(name="manual_uniq", constraint_type="unique", columns=("slug",))
+    actual = SchemaState(
+        tables={
+            "myapp_post": TableState(name="myapp_post", constraints={"manual_uniq": extra_con})
+        }
+    )
+
+    violations = invariant.check(expected_schema=expected, actual_schema=actual)
+    assert len(violations) == 0  # NoUnexpectedTables handles the missing table

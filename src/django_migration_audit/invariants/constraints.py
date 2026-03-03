@@ -1,9 +1,4 @@
-"""Constraint and index-specific invariants.
-
-Note: Full constraint and index checking requires additional implementation
-in the state.py module. These invariants provide basic checks that can be
-implemented with the current schema introspection capabilities.
-"""
+"""Constraint and index-specific invariants."""
 
 from django_migration_audit.invariants.base import (
     ComparisonBInvariant,
@@ -204,6 +199,176 @@ class UniqueConstraintHint(ComparisonBInvariant):
                                 "table": table.name,
                                 "column": col_name,
                                 "hint": "This column name typically requires a unique constraint",
+                            },
+                        )
+                    )
+
+        return violations
+
+
+class AllExpectedIndexesExist(ComparisonBInvariant):
+    """Verify that all indexes defined in migrations exist in the actual database."""
+
+    @property
+    def name(self):
+        return "All Expected Indexes Exist"
+
+    @property
+    def description(self):
+        return "All indexes from AddIndex migration operations must exist in the database"
+
+    def check(self, expected_schema, actual_schema):
+        violations = []
+
+        for expected_table in expected_schema.all_tables():
+            if not actual_schema.has_table(expected_table.name):
+                continue  # Missing table handled by AllExpectedTablesExist
+
+            actual_table = actual_schema.table(expected_table.name)
+
+            for idx_name, expected_idx in expected_table.indexes.items():
+                if not actual_table.has_index(idx_name):
+                    violations.append(
+                        Violation(
+                            invariant_name=self.name,
+                            severity=Severity.ERROR,
+                            message=f"Expected index '{idx_name}' on table '{expected_table.name}' does not exist",
+                            details={
+                                "table": expected_table.name,
+                                "index": idx_name,
+                                "columns": list(expected_idx.columns),
+                            },
+                        )
+                    )
+
+        return violations
+
+
+class AllExpectedConstraintsExist(ComparisonBInvariant):
+    """Verify that all constraints defined in migrations exist in the actual database."""
+
+    @property
+    def name(self):
+        return "All Expected Constraints Exist"
+
+    @property
+    def description(self):
+        return "All constraints from AddConstraint migration operations must exist in the database"
+
+    def check(self, expected_schema, actual_schema):
+        violations = []
+
+        for expected_table in expected_schema.all_tables():
+            if not actual_schema.has_table(expected_table.name):
+                continue  # Missing table handled by AllExpectedTablesExist
+
+            actual_table = actual_schema.table(expected_table.name)
+
+            for con_name, expected_con in expected_table.constraints.items():
+                if not actual_table.has_constraint(con_name):
+                    violations.append(
+                        Violation(
+                            invariant_name=self.name,
+                            severity=Severity.ERROR,
+                            message=f"Expected {expected_con.constraint_type} constraint '{con_name}' "
+                            f"on table '{expected_table.name}' does not exist",
+                            details={
+                                "table": expected_table.name,
+                                "constraint": con_name,
+                                "type": expected_con.constraint_type,
+                                "columns": list(expected_con.columns),
+                            },
+                        )
+                    )
+
+        return violations
+
+
+class NoUnexpectedIndexes(ComparisonBInvariant):
+    """Verify no indexes exist in the database that aren't defined in migrations.
+
+    Reports WARNING because Django also creates implicit indexes (e.g. for
+    ForeignKey columns) that are not tracked via AddIndex operations. Users
+    should review violations rather than treating them all as hard errors.
+    """
+
+    @property
+    def name(self):
+        return "No Unexpected Indexes"
+
+    @property
+    def description(self):
+        return (
+            "No indexes should exist in the database that aren't defined via AddIndex migrations"
+        )
+
+    def check(self, expected_schema, actual_schema):
+        violations = []
+
+        for actual_table in actual_schema.all_tables():
+            if not expected_schema.has_table(actual_table.name):
+                continue  # Unexpected table handled by NoUnexpectedTables
+
+            expected_table = expected_schema.table(actual_table.name)
+
+            for idx_name, actual_idx in actual_table.indexes.items():
+                if not expected_table.has_index(idx_name):
+                    violations.append(
+                        Violation(
+                            invariant_name=self.name,
+                            severity=Severity.WARNING,
+                            message=f"Unexpected index '{idx_name}' on table '{actual_table.name}' "
+                            f"is not defined in migrations",
+                            details={
+                                "table": actual_table.name,
+                                "index": idx_name,
+                                "columns": list(actual_idx.columns),
+                            },
+                        )
+                    )
+
+        return violations
+
+
+class NoUnexpectedConstraints(ComparisonBInvariant):
+    """Verify no constraints exist in the database that aren't defined in migrations.
+
+    Reports WARNING because Django creates implicit unique constraints for
+    fields with unique=True and unique_together, which are not tracked via
+    AddConstraint operations. Users should review violations rather than
+    treating them all as hard errors.
+    """
+
+    @property
+    def name(self):
+        return "No Unexpected Constraints"
+
+    @property
+    def description(self):
+        return "No constraints should exist in the database that aren't defined via AddConstraint migrations"
+
+    def check(self, expected_schema, actual_schema):
+        violations = []
+
+        for actual_table in actual_schema.all_tables():
+            if not expected_schema.has_table(actual_table.name):
+                continue  # Unexpected table handled by NoUnexpectedTables
+
+            expected_table = expected_schema.table(actual_table.name)
+
+            for con_name, actual_con in actual_table.constraints.items():
+                if not expected_table.has_constraint(con_name):
+                    violations.append(
+                        Violation(
+                            invariant_name=self.name,
+                            severity=Severity.WARNING,
+                            message=f"Unexpected {actual_con.constraint_type} constraint '{con_name}' "
+                            f"on table '{actual_table.name}' is not defined in migrations",
+                            details={
+                                "table": actual_table.name,
+                                "constraint": con_name,
+                                "type": actual_con.constraint_type,
+                                "columns": list(actual_con.columns),
                             },
                         )
                     )
