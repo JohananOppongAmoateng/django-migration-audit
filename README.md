@@ -6,7 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Django](https://img.shields.io/badge/django-4.2+-green.svg)](https://www.djangoproject.com/)
 [![Latest on Django Packages](https://img.shields.io/badge/PyPI--django--migration--audit--tags--8c3c26.svg)](https://djangopackages.org/packages/p/django-migration-audit/)
-                        
+
 
 > **⚠️ Work in Progress**
 >
@@ -137,6 +137,34 @@ Database: default
   [ERROR] All Expected Columns Exist: Expected column 'myapp_user.email' does not exist
   [WARNING] No Unexpected Tables: Unexpected table 'legacy_data' exists in database
 ```
+
+## Suppressing Invariants
+
+By default all invariants run. You can suppress specific ones via a CLI flag, Django settings, or programmatically — they are silently skipped and do not appear in output.
+
+### CLI flag (one-off runs)
+
+```bash
+# Skip a single invariant by name (case-sensitive)
+python manage.py audit_migrations --skip-invariants "No Unexpected Tables"
+
+# Skip multiple
+python manage.py audit_migrations --skip-invariants "No Unexpected Tables" "Column Nullability Matches"
+```
+
+### Django settings (persistent per-project baseline)
+
+```python
+# settings.py
+MIGRATION_AUDIT = {
+    "SKIP_INVARIANTS": [
+        "No Unexpected Tables",
+        "Column Nullability Matches",
+    ],
+}
+```
+
+CLI `--skip-invariants` merges with `SKIP_INVARIANTS` from settings — both apply.
 
 ## Architecture Overview
 
@@ -284,4 +312,3 @@ Created by Johanan Oppong Amoateng
 
 - **Issues**: [GitHub Issues](https://github.com/JohananOppongAmoateng/django-migration-audit/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/JohananOppongAmoateng/django-migration-audit/discussions)
-                        
