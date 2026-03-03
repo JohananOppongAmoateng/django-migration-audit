@@ -138,6 +138,41 @@ Database: default
   [WARNING] No Unexpected Tables: Unexpected table 'legacy_data' exists in database
 ```
 
+## How Detection Works
+
+A common question is: **"How does the tool know if a migration file was edited?"**
+
+Django only records *that* a migration ran — not *what was in it*. There is no hash or
+checksum stored in the `django_migrations` table. The tool detects modifications
+**indirectly**:
+
+1. It reads the migration files currently on disk.
+2. It replays every applied migration's operations in dependency order to build an
+   **expected schema** — what the database *should* look like if those exact files were
+   applied unchanged.
+3. It compares that expected schema to the **actual live database schema**.
+
+If the expected schema and the actual schema disagree, something went wrong — whether
+that is an edited migration, a `--fake` apply, a manual `ALTER TABLE`, a database
+restore, or a Django version upgrade that changed type storage (e.g. PostgreSQL
+`serial` → `identity` in Django 4.1).
+
+This means the tool catches *all* forms of drift, not only edited files.
+
+```
+Migration files on disk
+        │
+        │  replay operations
+        ▼
+  Expected schema  ──── Comparison B ────  Actual database schema
+                                                (ground truth)
+```
+
+The `django_migrations` table is only used for **Comparison A** (trust verification) —
+to check that every migration recorded as applied still has a corresponding file on
+disk, and that squash migrations are properly set up.
+
+
 ## Suppressing Invariants
 
 By default all invariants run. You can suppress specific ones via a CLI flag, Django settings, or programmatically — they are silently skipped and do not appear in output.
