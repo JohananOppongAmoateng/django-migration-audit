@@ -18,9 +18,9 @@
 | src/django\_migration\_audit/invariants/tables.py                     |       63 |        6 |       20 |        2 |     90% |22, 54, 62, 104, 147, 171 |
 | src/django\_migration\_audit/management/\_\_init\_\_.py               |        0 |        0 |        0 |        0 |    100% |           |
 | src/django\_migration\_audit/management/commands/\_\_init\_\_.py      |        0 |        0 |        0 |        0 |    100% |           |
-| src/django\_migration\_audit/management/commands/audit\_migrations.py |       83 |       14 |       20 |        3 |     80% |63-66, 69->76, 97-114, 123->128 |
+| src/django\_migration\_audit/management/commands/audit\_migrations.py |       89 |       14 |       20 |        3 |     81% |79-82, 85->92, 116-135, 144->149 |
 | src/django\_migration\_audit/models.py                                |        0 |        0 |        0 |        0 |    100% |           |
-| **TOTAL**                                                             |  **639** |   **59** |  **210** |   **23** | **89%** |           |
+| **TOTAL**                                                             |  **645** |   **59** |  **210** |   **23** | **89%** |           |
 
 
 ## Setup coverage badge
