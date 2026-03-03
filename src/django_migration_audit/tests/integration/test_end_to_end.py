@@ -79,3 +79,46 @@ class TestAuditMigrationsCommandIntegration(TransactionTestCase):
         # 4. VERIFY
         assert "test_e2e_app_model" in output
         assert "Missing table" in output or "missing" in output.lower()
+
+    def test_skip_invariants_cli_flag(self):
+        """Skipped invariant should not appear in output."""
+        call_command("migrate", "test_e2e_app", verbosity=0)
+
+        out = StringIO()
+        call_command(
+            "audit_migrations",
+            comparison="b",
+            skip_invariants=["No Unexpected Tables"],
+            stdout=out,
+        )
+        output = out.getvalue()
+
+        assert "No Unexpected Tables" not in output
+
+    @override_settings(MIGRATION_AUDIT={"SKIP_INVARIANTS": ["No Unexpected Tables"]})
+    def test_skip_invariants_from_settings(self):
+        """MIGRATION_AUDIT['SKIP_INVARIANTS'] should suppress the named invariant."""
+        call_command("migrate", "test_e2e_app", verbosity=0)
+
+        out = StringIO()
+        call_command("audit_migrations", comparison="b", stdout=out)
+        output = out.getvalue()
+
+        assert "No Unexpected Tables" not in output
+
+    @override_settings(MIGRATION_AUDIT={"SKIP_INVARIANTS": ["No Unexpected Tables"]})
+    def test_skip_invariants_cli_and_settings_merge(self):
+        """CLI skip_invariants and settings SKIP_INVARIANTS should both apply."""
+        call_command("migrate", "test_e2e_app", verbosity=0)
+
+        out = StringIO()
+        call_command(
+            "audit_migrations",
+            comparison="b",
+            skip_invariants=["Column Nullability Matches"],
+            stdout=out,
+        )
+        output = out.getvalue()
+
+        assert "No Unexpected Tables" not in output
+        assert "Column Nullability Matches" not in output
