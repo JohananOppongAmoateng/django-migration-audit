@@ -47,6 +47,37 @@ class ColumnState:
 
 
 # ----------------------------
+# Index
+# ----------------------------
+
+
+@dataclass(frozen=True)
+class IndexState:
+    """
+    Canonical representation of a database index.
+    """
+
+    name: str
+    columns: tuple  # field/column names covered by this index
+
+
+# ----------------------------
+# Constraint
+# ----------------------------
+
+
+@dataclass(frozen=True)
+class ConstraintState:
+    """
+    Canonical representation of a database constraint (unique or check).
+    """
+
+    name: str
+    constraint_type: str  # 'unique' or 'check'
+    columns: tuple  # field/column names (empty for check constraints)
+
+
+# ----------------------------
 # Table
 # ----------------------------
 
@@ -59,12 +90,20 @@ class TableState:
 
     name: str
     columns: Dict[str, ColumnState] = field(default_factory=dict)
+    indexes: Dict[str, IndexState] = field(default_factory=dict)
+    constraints: Dict[str, ConstraintState] = field(default_factory=dict)
 
     def has_column(self, column_name: str) -> bool:
         return column_name in self.columns
 
     def column(self, column_name: str) -> ColumnState:
         return self.columns[column_name]
+
+    def has_index(self, index_name: str) -> bool:
+        return index_name in self.indexes
+
+    def has_constraint(self, constraint_name: str) -> bool:
+        return constraint_name in self.constraints
 
 
 @dataclass(frozen=True)
@@ -123,6 +162,8 @@ class ProjectState:
         self._tables[table_name] = {
             "name": table_name,
             "columns": columns,
+            "indexes": {},
+            "constraints": {},
         }
         self._model_to_table[(app_label, name.lower())] = table_name
 
@@ -182,20 +223,44 @@ class ProjectState:
             self._model_to_table[(app_label, model_name.lower())] = new_table_name
 
     def add_constraint(self, app_label: str, model_name: str, constraint: any):
-        """Add a constraint (placeholder for future implementation)."""
-        pass
+        """Add a constraint from an AddConstraint operation."""
+        from django.db.models.constraints import CheckConstraint, UniqueConstraint
+
+        table_name = self._find_table(app_label, model_name)
+        if not table_name:
+            return
+        if isinstance(constraint, UniqueConstraint):
+            ctype = "unique"
+            columns = tuple(constraint.fields)
+        elif isinstance(constraint, CheckConstraint):
+            ctype = "check"
+            columns = ()
+        else:
+            ctype = type(constraint).__name__.lower()
+            columns = ()
+        self._tables[table_name]["constraints"][constraint.name] = ConstraintState(
+            name=constraint.name, constraint_type=ctype, columns=columns
+        )
 
     def remove_constraint(self, app_label: str, model_name: str, name: str):
-        """Remove a constraint (placeholder for future implementation)."""
-        pass
+        """Remove a constraint from a RemoveConstraint operation."""
+        table_name = self._find_table(app_label, model_name)
+        if table_name:
+            self._tables[table_name]["constraints"].pop(name, None)
 
     def add_index(self, app_label: str, model_name: str, index: any):
-        """Add an index (placeholder for future implementation)."""
-        pass
+        """Add an index from an AddIndex operation."""
+        table_name = self._find_table(app_label, model_name)
+        if table_name:
+            self._tables[table_name]["indexes"][index.name] = IndexState(
+                name=index.name, columns=tuple(index.fields)
+            )
 
     def remove_index(self, app_label: str, model_name: str, name: str):
-        """Remove an index (placeholder for future implementation)."""
-        pass
+        """Remove an index from a RemoveIndex operation."""
+        table_name = self._find_table(app_label, model_name)
+        if table_name:
+            self._tables[table_name]["indexes"].pop(name, None)
 
     def to_schema_state(self) -> SchemaState:
         """Convert the mutable ProjectState to an immutable SchemaState."""
@@ -204,6 +269,8 @@ class ProjectState:
             tables[table_name] = TableState(
                 name=table_data["name"],
                 columns=table_data["columns"].copy(),
+                indexes=table_data["indexes"].copy(),
+                constraints=table_data["constraints"].copy(),
             )
         return SchemaState(tables=tables)
 

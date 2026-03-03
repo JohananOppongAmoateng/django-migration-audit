@@ -70,6 +70,7 @@ class TestIntrospectSchema:
             1: "AutoField",
             2: "CharField",
         }.get(code, "unknown")
+        mock_introspection.get_constraints.return_value = {}
 
         mock_connection.introspection = mock_introspection
         mock_connections.__getitem__.return_value = mock_connection
@@ -114,6 +115,7 @@ class TestIntrospectSchema:
             1: "AutoField",
             2: "CharField",
         }.get(code, "unknown")
+        mock_introspection.get_constraints.return_value = {}
 
         mock_connection.introspection = mock_introspection
         mock_connections.__getitem__.return_value = mock_connection
@@ -156,6 +158,7 @@ class TestIntrospectSchema:
 
         mock_introspection.get_table_description.side_effect = get_table_description
         mock_introspection.get_field_type.return_value = "AutoField"
+        mock_introspection.get_constraints.return_value = {}
 
         mock_connection.introspection = mock_introspection
         mock_connections.__getitem__.return_value = mock_connection

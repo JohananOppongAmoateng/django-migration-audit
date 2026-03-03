@@ -16,7 +16,7 @@ ultimately match.
 
 from django.db import connections
 
-from .state import ColumnState, SchemaState, TableState
+from .state import ColumnState, ConstraintState, IndexState, SchemaState, TableState
 
 DJANGO_INTERNAL_TABLE_PREFIXES = ("django_", "auth_", "sqlite_")
 
@@ -48,7 +48,15 @@ def introspect_schema(using: str = "default") -> SchemaState:
                 continue
 
             columns = _introspect_table_columns(cursor, introspection, table_name)
-            tables[table_name] = TableState(name=table_name, columns=columns)
+            indexes, constraints = _introspect_indexes_and_constraints(
+                cursor, introspection, table_name
+            )
+            tables[table_name] = TableState(
+                name=table_name,
+                columns=columns,
+                indexes=indexes,
+                constraints=constraints,
+            )
 
     return SchemaState(tables=tables)
 
@@ -127,3 +135,47 @@ def _normalize_db_type(type_code, introspection, description=None) -> str:
     }
 
     return type_map.get(data_type, data_type.lower())
+
+
+def _introspect_indexes_and_constraints(cursor, introspection, table_name: str):
+    """
+    Introspect indexes and constraints for a specific table.
+
+    Uses Django's get_constraints() which returns a unified dict covering:
+    - Primary key constraints (skipped)
+    - Foreign key constraints (skipped — column-level checks cover these)
+    - Unique constraints  → ConstraintState(type='unique')
+    - Check constraints   → ConstraintState(type='check')
+    - Plain indexes       → IndexState
+
+    Returns:
+        (indexes, constraints) — dicts mapping name → IndexState/ConstraintState
+    """
+    try:
+        raw = introspection.get_constraints(cursor, table_name)
+    except Exception:
+        return {}, {}
+
+    indexes = {}
+    constraints = {}
+
+    for name, info in raw.items():
+        if info.get("primary_key"):
+            continue
+        if info.get("foreign_key") is not None:
+            continue
+
+        columns = tuple(info.get("columns") or [])
+
+        if info.get("check"):
+            constraints[name] = ConstraintState(
+                name=name, constraint_type="check", columns=columns
+            )
+        elif info.get("unique"):
+            constraints[name] = ConstraintState(
+                name=name, constraint_type="unique", columns=columns
+            )
+        elif info.get("index"):
+            indexes[name] = IndexState(name=name, columns=columns)
+
+    return indexes, constraints

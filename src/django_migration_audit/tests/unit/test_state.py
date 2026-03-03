@@ -2,6 +2,8 @@ import pytest
 
 from django_migration_audit.core.state import (
     ColumnState,
+    ConstraintState,
+    IndexState,
     TableState,
     SchemaState,
 )
@@ -375,6 +377,189 @@ def test_project_state_remove_fk_column():
     table = schema.table("myapp_book")
     assert not table.has_column("author_id")
     assert not table.has_column("author")
+
+
+# ----------------------------
+# IndexState tests
+# ----------------------------
+
+
+def test_index_state_equality():
+    i1 = IndexState(name="my_idx", columns=("title",))
+    i2 = IndexState(name="my_idx", columns=("title",))
+
+    assert i1 == i2
+
+
+def test_index_state_inequality_on_name():
+    i1 = IndexState(name="idx_a", columns=("title",))
+    i2 = IndexState(name="idx_b", columns=("title",))
+
+    assert i1 != i2
+
+
+def test_index_state_is_immutable():
+    idx = IndexState(name="my_idx", columns=("title",))
+
+    with pytest.raises(Exception):
+        idx.name = "other"
+
+
+# ----------------------------
+# ConstraintState tests
+# ----------------------------
+
+
+def test_constraint_state_equality():
+    c1 = ConstraintState(name="my_uniq", constraint_type="unique", columns=("email",))
+    c2 = ConstraintState(name="my_uniq", constraint_type="unique", columns=("email",))
+
+    assert c1 == c2
+
+
+def test_constraint_state_is_immutable():
+    c = ConstraintState(name="my_uniq", constraint_type="unique", columns=("email",))
+
+    with pytest.raises(Exception):
+        c.name = "other"
+
+
+# ----------------------------
+# TableState index/constraint tests
+# ----------------------------
+
+
+def test_table_has_index():
+    table = TableState(
+        name="myapp_post",
+        columns={},
+        indexes={"post_title_idx": IndexState(name="post_title_idx", columns=("title",))},
+    )
+
+    assert table.has_index("post_title_idx") is True
+    assert table.has_index("missing_idx") is False
+
+
+def test_table_has_constraint():
+    table = TableState(
+        name="myapp_post",
+        columns={},
+        constraints={
+            "post_slug_uniq": ConstraintState(
+                name="post_slug_uniq", constraint_type="unique", columns=("slug",)
+            )
+        },
+    )
+
+    assert table.has_constraint("post_slug_uniq") is True
+    assert table.has_constraint("missing_con") is False
+
+
+def test_table_defaults_to_empty_indexes_and_constraints():
+    table = TableState(name="myapp_thing")
+
+    assert table.indexes == {}
+    assert table.constraints == {}
+
+
+# ----------------------------
+# ProjectState index/constraint tests
+# ----------------------------
+
+
+def test_project_state_add_index():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+    fields = [("id", models.AutoField(primary_key=True))]
+    state.create_table("myapp", "Post", fields, {})
+
+    idx = models.Index(fields=["id"], name="post_id_idx")
+    state.add_index("myapp", "Post", idx)
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_post")
+    assert table.has_index("post_id_idx")
+    assert table.indexes["post_id_idx"].columns == ("id",)
+
+
+def test_project_state_remove_index():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+    fields = [("id", models.AutoField(primary_key=True))]
+    state.create_table("myapp", "Post", fields, {})
+
+    idx = models.Index(fields=["id"], name="post_id_idx")
+    state.add_index("myapp", "Post", idx)
+    state.remove_index("myapp", "Post", "post_id_idx")
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_post")
+    assert not table.has_index("post_id_idx")
+
+
+def test_project_state_add_unique_constraint():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+    fields = [
+        ("id", models.AutoField(primary_key=True)),
+        ("slug", models.SlugField()),
+    ]
+    state.create_table("myapp", "Post", fields, {})
+
+    con = models.UniqueConstraint(fields=["slug"], name="post_slug_uniq")
+    state.add_constraint("myapp", "Post", con)
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_post")
+    assert table.has_constraint("post_slug_uniq")
+    assert table.constraints["post_slug_uniq"].constraint_type == "unique"
+    assert table.constraints["post_slug_uniq"].columns == ("slug",)
+
+
+def test_project_state_add_check_constraint():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+    fields = [
+        ("id", models.AutoField(primary_key=True)),
+        ("rating", models.IntegerField()),
+    ]
+    state.create_table("myapp", "Review", fields, {})
+
+    con = models.CheckConstraint(
+        check=models.Q(rating__gte=1, rating__lte=5),
+        name="review_rating_range",
+    )
+    state.add_constraint("myapp", "Review", con)
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_review")
+    assert table.has_constraint("review_rating_range")
+    assert table.constraints["review_rating_range"].constraint_type == "check"
+
+
+def test_project_state_remove_constraint():
+    from django_migration_audit.core.state import ProjectState
+    from django.db import models
+
+    state = ProjectState()
+    fields = [("id", models.AutoField(primary_key=True)), ("slug", models.SlugField())]
+    state.create_table("myapp", "Post", fields, {})
+
+    con = models.UniqueConstraint(fields=["slug"], name="post_slug_uniq")
+    state.add_constraint("myapp", "Post", con)
+    state.remove_constraint("myapp", "Post", "post_slug_uniq")
+
+    schema = state.to_schema_state()
+    table = schema.table("myapp_post")
+    assert not table.has_constraint("post_slug_uniq")
 
 
 def test_project_state_field_type_mapping():

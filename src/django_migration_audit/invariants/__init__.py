@@ -25,6 +25,10 @@ Constraint invariants (in constraints.py):
 - NoOrphanedForeignKeys
 - PrimaryKeyExists
 - UniqueConstraintHint
+- AllExpectedIndexesExist
+- AllExpectedConstraintsExist
+- NoUnexpectedIndexes
+- NoUnexpectedConstraints
 """
 
 # Base invariants (core functionality)
@@ -50,8 +54,12 @@ from django_migration_audit.invariants.columns import (
 
 # Constraint invariants
 from django_migration_audit.invariants.constraints import (
+    AllExpectedConstraintsExist,
+    AllExpectedIndexesExist,
     ForeignKeyColumnsExist,
     NoOrphanedForeignKeys,
+    NoUnexpectedConstraints,
+    NoUnexpectedIndexes,
     PrimaryKeyExists,
     UniqueConstraintHint,
 )
@@ -92,4 +100,8 @@ __all__ = [
     "NoOrphanedForeignKeys",
     "PrimaryKeyExists",
     "UniqueConstraintHint",
+    "AllExpectedIndexesExist",
+    "AllExpectedConstraintsExist",
+    "NoUnexpectedIndexes",
+    "NoUnexpectedConstraints",
 ]
