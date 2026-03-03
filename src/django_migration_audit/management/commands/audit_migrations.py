@@ -5,6 +5,7 @@ This command performs both Comparison A (trust verification) and
 Comparison B (reality check) to verify migration consistency.
 """
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import connections
 
@@ -39,10 +40,25 @@ class Command(BaseCommand):
             default="all",
             help="Which comparison to run: a (trust), b (reality), or all (default: all)",
         )
+        parser.add_argument(
+            "--skip-invariants",
+            nargs="+",
+            metavar="NAME",
+            dest="skip_invariants",
+            help=(
+                "Names of invariants to skip (case-sensitive). "
+                "Merges with MIGRATION_AUDIT['SKIP_INVARIANTS'] in settings."
+            ),
+        )
 
     def handle(self, *args, **options):
         database = options["database"]
         comparison = options["comparison"]
+
+        audit_settings = getattr(settings, "MIGRATION_AUDIT", {})
+        self.skip_invariants = set(audit_settings.get("SKIP_INVARIANTS", [])) | set(
+            options["skip_invariants"] or []
+        )
 
         self.stdout.write(self.style.SUCCESS("\n=== Django Migration Audit ==="))
         self.stdout.write(f"Database: {database}\n")
@@ -92,12 +108,17 @@ class Command(BaseCommand):
                 else:
                     self.stdout.write(self.style.WARNING(f"  {violation}"))
 
+    def _active_invariants(self, invariants):
+        return [i for i in invariants if i.name not in self.skip_invariants]
+
     def _run_comparison_a(self, history):
         """Run Comparison A invariants (trust verification)."""
-        invariants = [
-            NoMissingMigrationFiles(),
-            SquashMigrationsProperlyReplaced(),
-        ]
+        invariants = self._active_invariants(
+            [
+                NoMissingMigrationFiles(),
+                SquashMigrationsProperlyReplaced(),
+            ]
+        )
 
         violations = []
         for invariant in invariants:
@@ -148,13 +169,15 @@ class Command(BaseCommand):
         self.stdout.write(f"    Actual tables: {len(actual_schema.tables)}\n")
 
         # Run invariants
-        invariants = [
-            AllExpectedTablesExist(),
-            NoUnexpectedTables(),
-            AllExpectedColumnsExist(),
-            NoUnexpectedColumns(),
-            ColumnNullabilityMatches(),
-        ]
+        invariants = self._active_invariants(
+            [
+                AllExpectedTablesExist(),
+                NoUnexpectedTables(),
+                AllExpectedColumnsExist(),
+                NoUnexpectedColumns(),
+                ColumnNullabilityMatches(),
+            ]
+        )
 
         violations = []
         for invariant in invariants:
