@@ -1,0 +1,59 @@
+site_name: Django Migration Audit
+site_description: A forensic Django tool that verifies whether a live database schema is historically consistent with its applied migrations.
+repo_url: https://github.com/JohananOppongAmoateng/django-migration-audit
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            show_source: false
+            inherited_members: false
+            members_order: source
+            show_if_no_docstring: true
+            merge_init_into_class: true
+            show_root_heading: true
+            show_root_full_path: false
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - admonition
+  - pymdownx.details
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Tutorials:
+      - Running the Example App: tutorials/run-the-example.md
+  - How-To Guides:
+      - Suppress Invariants: how-to-guides/suppress-invariants.md
+      - Auto-Run After Deployments: how-to-guides/auto-run-after-deploy.md
+      - Run in CI: how-to-guides/run-in-ci.md
+  - Reference: reference/
+  - Explanation:
+      - How Detection Works: explanation/how-detection-works.md
+      - Architecture: explanation/architecture.md
+  - Contributing: contribute.md
+  - Changelog: changelog.md
