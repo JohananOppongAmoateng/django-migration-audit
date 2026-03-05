@@ -533,10 +533,14 @@ def test_project_state_add_check_constraint():
     ]
     state.create_table("myapp", "Review", fields, {})
 
-    con = models.CheckConstraint(
-        check=models.Q(rating__gte=1, rating__lte=5),
-        name="review_rating_range",
+    import django
+
+    constraint_kwargs = (
+        {"condition": models.Q(rating__gte=1, rating__lte=5)}
+        if django.VERSION >= (5, 1)
+        else {"check": models.Q(rating__gte=1, rating__lte=5)}
     )
+    con = models.CheckConstraint(name="review_rating_range", **constraint_kwargs)
     state.add_constraint("myapp", "Review", con)
 
     schema = state.to_schema_state()
