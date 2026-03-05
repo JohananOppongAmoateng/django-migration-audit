@@ -56,11 +56,10 @@ classifiers = [
 
 [project.optional-dependencies]
 docs = [
-    "sphinx>=7.0.0",
-    "sphinx-autobuild>=2024.0.0",
-    "doc8>=1.0.0",
-    "myst-parser>=2.0.0",
-    "sphinx-rtd-theme>=2.0.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.25.0",
+    "mkdocs-gen-files>=0.5.0",
+    "mkdocs-literate-nav>=0.6.0",
 ]
 
 
@@ -77,10 +76,6 @@ exclude = ["src/django_migration_audit/tests"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/django_migration_audit"]
 artifacts = ["*.mo"]
-
-[tool.doc8]
-max-line-length = 100
-sphinx = true
 
 [tool.ruff]
 line-length = 99
